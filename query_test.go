@@ -69,6 +69,29 @@ func TestSelect(t *testing.T) {
 				OrderDesc("created_at"),
 			),
 		},
+		{
+			"SELECT * FROM posts WHERE user_id = $1 AND id IN (SELECT post_id FROM tags WHERE title LIKE $2)",
+			Select(
+				Columns("*"),
+				Table("posts"),
+				WhereEq("user_id", 1234),
+				WhereInQuery("id",
+					Select(
+						Columns("post_id"),
+						Table("tags"),
+						WhereLike("title", "some title"),
+					),
+				),
+			),
+		},
+		{
+			"SELECT * FROM users WHERE id IN ($1, $2, $3, $4, $5)",
+			Select(
+				Columns("*"),
+				Table("users"),
+				WhereIn("id", 1, 2, 3, 4, 5),
+			),
+		},
 	}
 
 	checkQueries(testQueries, t)

@@ -1,6 +1,7 @@
 package query
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -85,7 +86,7 @@ func Returning(cols ...string) Option {
 
 func Set(col string, val interface{}) Option {
 	return func(q Query) Query {
-		q = SetRaw(col, param(len(q.args) + 1))(q)
+		q = SetRaw(col, nil)(q)
 		q.args = append(q.args, val)
 
 		return q
@@ -129,15 +130,23 @@ func Values(vals ...interface{}) Option {
 
 func WhereEq(col string, val interface{}) Option {
 	return func(q Query) Query {
+		q = WhereEqRaw(col, nil)(q)
+		q.args = append(q.args, val)
+
+		return q
+	}
+}
+
+func WhereEqRaw(col string, val interface{}) Option {
+	return func(q Query) Query {
 		w := where{
 			col: col,
 			op:  "=",
-			val: param(len(q.args) + 1),
+			val: val,
 			cat: " AND ",
 		}
 
 		q.wheres = append(q.wheres, w)
-		q.args = append(q.args, val)
 
 		return q
 	}
@@ -149,11 +158,29 @@ func WhereIn(col string, vals ...interface{}) Option {
 			return q
 		}
 
-		in := make([]string, len(vals), len(vals))
-		larg := len(q.args)
+		w := where{
+			col: col,
+			op:  "IN",
+			cat: " AND ",
+		}
 
-		for i := range vals {
-			in[i] = param(larg + i + 1)
+		q.wheres = append(q.wheres, w)
+		q.args = append(q.args, vals...)
+
+		return q
+	}
+}
+
+func WhereInRaw(col string, vals ...interface{}) Option {
+	return func(q Query) Query {
+		if len(vals) == 0 {
+			return q
+		}
+
+		in := make([]string, len(vals), len(vals))
+
+		for i, v := range vals {
+			in[i] = fmt.Sprintf("%v", v)
 		}
 
 		val := "(" + strings.Join(in, ", ") + ")"
@@ -166,7 +193,6 @@ func WhereIn(col string, vals ...interface{}) Option {
 		}
 
 		q.wheres = append(q.wheres, w)
-		q.args = append(q.args, vals...)
 
 		return q
 	}
@@ -175,10 +201,10 @@ func WhereIn(col string, vals ...interface{}) Option {
 func WhereInQuery(col string, q2 Query) Option {
 	return func(q1 Query) Query {
 		w := where{
-			col: col,
-			op:  "IN",
-			val: "(" + q2.Build() + ")",
-			cat: " AND ",
+			col:   col,
+			op:    "IN",
+			cat:   " AND ",
+			query: q2,
 		}
 
 		q1.wheres = append(q1.wheres, w)
@@ -192,7 +218,6 @@ func WhereIs(col string, val interface{}) Option {
 		w := where{
 			col: col,
 			op:  "IS",
-			val: val,
 			cat: " AND ",
 		}
 
@@ -207,7 +232,6 @@ func WhereLike(col string, val interface{}) Option {
 		w := where{
 			col: col,
 			op:  "LIKE",
-			val: param(len(q.args) + 1),
 			cat: " AND ",
 		}
 

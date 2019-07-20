@@ -22,10 +22,11 @@ type set struct {
 type statement uint8
 
 type where struct {
-	col string
-	op  string
-	val interface{}
-	cat string
+	col   string
+	op    string
+	val   interface{}
+	cat   string
+	query Query
 }
 
 type Query struct {
@@ -38,6 +39,7 @@ type Query struct {
 	limit  int
 	ret    []string
 	args   []interface{}
+	bind   int
 }
 
 const (
@@ -137,7 +139,35 @@ func (q Query) buildWheres(buf *bytes.Buffer) {
 	end := len(q.wheres) - 1
 
 	for i, w := range q.wheres {
-		wheres = append(wheres, fmt.Sprintf("%s %s %v", w.col, w.op, w.val))
+		where := bytes.NewBufferString(w.col)
+		where.WriteString(" ")
+		where.WriteString(w.op)
+		where.WriteString(" ")
+
+		if w.val == nil {
+			if !w.query.isZero() {
+				w.query.bind += q.bind
+				w.val = "(" + w.query.Build() + ")"
+			} else  {
+				if w.op == "IN" {
+					in := make([]string, 0)
+
+					for q.bind != len(q.args) {
+						q.bind++
+						in = append(in, param(q.bind))
+					}
+
+					w.val = "(" + strings.Join(in, ", ") + ")"
+				} else {
+					q.bind++
+					w.val = param(q.bind)
+				}
+			}
+		}
+
+		fmt.Fprintf(where, "%v", w.val)
+
+		wheres = append(wheres, where.String())
 
 		if i != end {
 			next := q.wheres[i + 1]
@@ -156,6 +186,20 @@ func (q Query) buildWheres(buf *bytes.Buffer) {
 
 		buf.WriteString(strings.Join(wheres, w.cat))
 	}
+}
+
+func (q Query) isZero() bool {
+	return q.stmt == statement(0) &&
+           q.table == "" &&
+           len(q.cols) == 0 &&
+           len(q.wheres) == 0 &&
+           len(q.sets) == 0 &&
+           len(q.wheres) == 0 &&
+           len(q.sets) == 0 &&
+           q.order.isZero() &&
+           q.limit == 0 &&
+           len(q.ret) == 0 &&
+           len(q.args) == 0
 }
 
 func (q Query) Build() string {
@@ -209,6 +253,11 @@ func (q Query) Build() string {
 			sets := make([]string, len(q.sets), len(q.sets))
 
 			for i, s := range q.sets {
+				if s.val == nil {
+					q.bind++
+					s.val = param(q.bind)
+				}
+
 				sets[i] = fmt.Sprintf("%s = %v", s.col, s.val)
 			}
 
