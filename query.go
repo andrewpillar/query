@@ -148,6 +148,7 @@ func (q Query) buildWheres(buf *bytes.Buffer) {
 			if !w.query.isZero() {
 				w.query.bind += q.bind
 				w.val = "(" + w.query.Build() + ")"
+				q.bind += w.query.bind
 			} else  {
 				if w.op == "IN" {
 					in := make([]string, 0)
