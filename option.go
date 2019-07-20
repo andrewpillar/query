@@ -208,6 +208,7 @@ func WhereInQuery(col string, q2 Query) Option {
 		}
 
 		q1.wheres = append(q1.wheres, w)
+		q1.args = append(q1.args, q2.args...)
 
 		return q1
 	}
