@@ -149,7 +149,7 @@ func (q *Query) buildWheres(buf *bytes.Buffer) {
 				w.query.bind += q.bind
 				w.val = "(" + w.query.Build() + ")"
 				q.bind++
-			} else  {
+			} else {
 				if w.op == "IN" {
 					in := make([]string, 0)
 
@@ -191,16 +191,16 @@ func (q *Query) buildWheres(buf *bytes.Buffer) {
 
 func (q Query) isZero() bool {
 	return q.stmt == statement(0) &&
-           q.table == "" &&
-           len(q.cols) == 0 &&
-           len(q.wheres) == 0 &&
-           len(q.sets) == 0 &&
-           len(q.wheres) == 0 &&
-           len(q.sets) == 0 &&
-           q.order.isZero() &&
-           q.limit == 0 &&
-           len(q.ret) == 0 &&
-           len(q.args) == 0
+            q.table == "" &&
+            len(q.cols) == 0 &&
+            len(q.wheres) == 0 &&
+            len(q.sets) == 0 &&
+            len(q.wheres) == 0 &&
+            len(q.sets) == 0 &&
+            q.order.isZero() &&
+            q.limit == 0 &&
+            len(q.ret) == 0 &&
+            len(q.args) == 0
 }
 
 func (q *Query) Build() string {
