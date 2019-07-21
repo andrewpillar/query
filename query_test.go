@@ -85,6 +85,28 @@ func TestSelect(t *testing.T) {
 			),
 		},
 		{
+			"SELECT * FROM posts WHERE id IN (SELECT post_id FROM tags WHERE title LIKE $1) AND category_id IN (SELECT id FROM categories WHERE name LIKE $2) AND user_id = $3",
+			Select(
+				Columns("*"),
+				Table("posts"),
+				WhereInQuery("id",
+					Select(
+						Columns("post_id"),
+						Table("tags"),
+						WhereLike("title", "some title"),
+					),
+				),
+				WhereInQuery("category_id",
+					Select(
+						Columns("id"),
+						Table("categories"),
+						WhereLike("name", "some category"),
+					),
+				),
+				WhereEq("user_id", 1234),
+			),
+		},
+		{
 			"SELECT * FROM users WHERE id IN ($1, $2, $3, $4, $5)",
 			Select(
 				Columns("*"),
