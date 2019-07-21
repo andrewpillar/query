@@ -129,7 +129,7 @@ func (q Query) buildReturning(buf *bytes.Buffer) {
 	buf.WriteString(strings.Join(q.ret, ", "))
 }
 
-func (q Query) buildWheres(buf *bytes.Buffer) {
+func (q *Query) buildWheres(buf *bytes.Buffer) {
 	if len(q.wheres) == 0 {
 		return
 	}
@@ -149,7 +149,7 @@ func (q Query) buildWheres(buf *bytes.Buffer) {
 			if !w.query.isZero() {
 				w.query.bind += q.bind
 				w.val = "(" + w.query.Build() + ")"
-				q.bind += w.query.bind
+				q.bind = w.query.bind
 			} else {
 				if w.op == "IN" {
 					in := make([]string, 0)
@@ -204,7 +204,7 @@ func (q Query) isZero() bool {
 		len(q.args) == 0
 }
 
-func (q Query) Build() string {
+func (q *Query) Build() string {
 	buf := bytes.NewBufferString("")
 
 	switch q.stmt {
