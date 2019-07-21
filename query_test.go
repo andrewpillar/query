@@ -53,12 +53,13 @@ func TestSelect(t *testing.T) {
 			),
 		},
 		{
-			"SELECT * FROM posts WHERE title LIKE $1 LIMIT 5",
+			"SELECT * FROM posts WHERE title LIKE $1 LIMIT 5 OFFSET 2",
 			Select(
 				Columns("*"),
 				Table("posts"),
 				WhereLike("title", "%foo%"),
 				Limit(5),
+				Offset(2),
 			),
 		},
 		{
