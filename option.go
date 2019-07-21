@@ -28,6 +28,14 @@ func Limit(l int) Option {
 	}
 }
 
+func Offset(o int) Option {
+	return func(q Query) Query {
+		q.offset = o
+
+		return q
+	}
+}
+
 func Or(opts ...Option) Option {
 	return func(q Query) Query {
 		l := len(q.wheres)
