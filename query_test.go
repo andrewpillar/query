@@ -39,6 +39,20 @@ func TestSelect(t *testing.T) {
 			),
 		},
 		{
+			"SELECT * FROM users WHERE username = $1 AND email != $2 AND age > $3 AND age <= $4 AND created_at >= $5 AND created_at < $6 AND name LIKE $7",
+			Select(
+				Columns("*"),
+				Table("users"),
+				Where("username", OpEq, "me"),
+				Where("email", OpNotEq, "me@example.com"),
+				Where("age", OpGt, 20),
+				Where("age", OpLtOrEq, 100),
+				Where("created_at", OpGtOrEq, 2018),
+				Where("created_at", OpLt, 2019),
+				Where("name", OpLike, "some category"),
+			),
+		},
+		{
 			"SELECT * FROM posts WHERE user_id IN (SELECT id FROM users WHERE username = $1)",
 			Select(
 				Columns("*"),

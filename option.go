@@ -136,28 +136,33 @@ func Values(vals ...interface{}) Option {
 	}
 }
 
-func WhereEq(col string, val interface{}) Option {
+func Where(col string, op string, val interface{}) Option {
 	return func(q Query) Query {
-		q = WhereEqRaw(col, nil)(q)
-		q.args = append(q.args, val)
-
+		w := where{
+			col: col,
+			op:  op,
+			cat: " AND ",
+		}
+		q.wheres = append(q.wheres, w)
+		switch op {
+		case OpEq, OpNotEq, OpGt, OpGtOrEq, OpLt, OpLtOrEq, OpLike:
+			q.args = append(q.args, val)
+		case OpIs:
+		}
 		return q
 	}
 }
 
-func WhereEqRaw(col string, val interface{}) Option {
-	return func(q Query) Query {
-		w := where{
-			col: col,
-			op:  "=",
-			val: val,
-			cat: " AND ",
-		}
+func WhereEq(col string, val interface{}) Option {
+	return Where(col, OpEq, val)
+}
 
-		q.wheres = append(q.wheres, w)
+func WhereIs(col string, val interface{}) Option {
+	return Where(col, OpIs, val)
+}
 
-		return q
-	}
+func WhereLike(col string, val interface{}) Option {
+	return Where(col, OpLike, val)
 }
 
 func WhereIn(col string, vals ...interface{}) Option {
@@ -219,34 +224,5 @@ func WhereInQuery(col string, q2 Query) Option {
 		q1.args = append(q1.args, q2.args...)
 
 		return q1
-	}
-}
-
-func WhereIs(col string, val interface{}) Option {
-	return func(q Query) Query {
-		w := where{
-			col: col,
-			op:  "IS",
-			cat: " AND ",
-		}
-
-		q.wheres = append(q.wheres, w)
-
-		return q
-	}
-}
-
-func WhereLike(col string, val interface{}) Option {
-	return func(q Query) Query {
-		w := where{
-			col: col,
-			op:  "LIKE",
-			cat: " AND ",
-		}
-
-		q.wheres = append(q.wheres, w)
-		q.args = append(q.args, val)
-
-		return q
 	}
 }

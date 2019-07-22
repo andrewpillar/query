@@ -29,6 +29,17 @@ type where struct {
 	query Query
 }
 
+const (
+	OpEq     = "="
+	OpNotEq  = "!="
+	OpGt     = ">"
+	OpGtOrEq = ">="
+	OpLt     = "<"
+	OpLtOrEq = "<="
+	OpLike   = "LIKE"
+	OpIs     = "IS"
+)
+
 type Query struct {
 	stmt   statement
 	table  string
@@ -200,6 +211,7 @@ func (q Query) isZero() bool {
 		len(q.sets) == 0 &&
 		q.order.isZero() &&
 		q.limit == 0 &&
+		q.offset == 0 &&
 		len(q.ret) == 0 &&
 		len(q.args) == 0
 }
