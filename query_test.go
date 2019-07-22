@@ -169,7 +169,7 @@ func TestUpdate(t *testing.T) {
 			),
 		},
 		{
-			"UPDATE posts SET deleted_at = NOW() WHERE user_id IN (SELECT id FROM users WHERE username = $1)",
+			"UPDATE posts SET deleted_at = NOW() WHERE user_id IN (SELECT id FROM users WHERE username = $1) RETURNING updated_at",
 			Update(
 				Table("posts"),
 				SetRaw("deleted_at", "NOW()"),
@@ -180,6 +180,7 @@ func TestUpdate(t *testing.T) {
 						WhereEq("username", "me"),
 					),
 				),
+				Returning("updated_at"),
 			),
 		},
 	}

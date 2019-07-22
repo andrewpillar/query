@@ -295,6 +295,8 @@ func (q *Query) Build() string {
 			buf.WriteString(strconv.FormatInt(int64(q.offset), 10))
 		}
 
+		q.buildReturning(buf)
+
 		return buf.String()
 	case _delete:
 		buf.WriteString("DELETE FROM ")
