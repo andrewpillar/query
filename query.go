@@ -29,17 +29,6 @@ type where struct {
 	query Query
 }
 
-const (
-	OpEq     = "="
-	OpNotEq  = "!="
-	OpGt     = ">"
-	OpGtOrEq = ">="
-	OpLt     = "<"
-	OpLtOrEq = "<="
-	OpLike   = "LIKE"
-	OpIs     = "IS"
-)
-
 type Query struct {
 	stmt   statement
 	table  string
@@ -62,6 +51,15 @@ const (
 	_insert
 	_update
 	_delete
+
+	OpEq     = "="
+	OpNotEq  = "!="
+	OpGt     = ">"
+	OpGtOrEq = ">="
+	OpLt     = "<"
+	OpLtOrEq = "<="
+	OpLike   = "LIKE"
+	OpIs     = "IS"
 )
 
 func Delete(opts ...Option) Query {
