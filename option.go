@@ -50,17 +50,13 @@ func Or(opts ...Option) Option {
 			return q
 		}
 
-		wheres := make([]where, 0)
-
 		for i, w := range q.wheres {
-			if i >= l {
+			if i >= l && i < diff {
 				w.cat = " OR "
 			}
 
-			wheres = append(wheres, w)
+			q.wheres[i] = w
 		}
-
-		q.wheres = wheres
 
 		return q
 	}

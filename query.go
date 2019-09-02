@@ -145,14 +145,13 @@ func (q *Query) buildWheres(buf *bytes.Buffer) {
 
 	buf.WriteString(" WHERE ")
 
-	wheres := make([]string, 0)
 	end := len(q.wheres) - 1
 
 	for i, w := range q.wheres {
-		where := bytes.NewBufferString(w.col)
-		where.WriteString(" ")
-		where.WriteString(w.op)
-		where.WriteString(" ")
+		buf.WriteString(w.col)
+		buf.WriteString(" ")
+		buf.WriteString(w.op)
+		buf.WriteString(" ")
 
 		if w.val == nil {
 			if !w.query.isZero() {
@@ -176,26 +175,11 @@ func (q *Query) buildWheres(buf *bytes.Buffer) {
 			}
 		}
 
-		fmt.Fprintf(where, "%v", w.val)
-
-		wheres = append(wheres, where.String())
+		fmt.Fprintf(buf, "%v", w.val)
 
 		if i != end {
-			next := q.wheres[i+1]
-
-			if next.cat != w.cat {
-				buf.WriteString("(")
-				buf.WriteString(strings.Join(wheres, w.cat))
-				buf.WriteString(")")
-				buf.WriteString(next.cat)
-
-				wheres = make([]string, 0)
-			}
-
-			continue
+			buf.WriteString(w.cat)
 		}
-
-		buf.WriteString(strings.Join(wheres, w.cat))
 	}
 }
 

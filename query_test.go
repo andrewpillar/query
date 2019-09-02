@@ -129,6 +129,31 @@ func TestSelect(t *testing.T) {
 				WhereIn("id", 1, 2, 3, 4, 5),
 			),
 		},
+		{
+			"SELECT * FROM objects WHERE deleted_at IS $1 AND namespace_id IN (SELECT id FROM namespaces WHERE root_id IN (SELECT namespace_id FROM collaborators WHERE user_id = $2)) OR user_id = $3 AND foo = $4",
+			Select(
+				Columns("*"),
+				Table("objects"),
+				WhereIs("deleted_at", "NULL"),
+				Or(
+					WhereInQuery("namespace_id",
+						Select(
+							Columns("id"),
+							Table("namespaces"),
+							WhereInQuery("root_id",
+								Select(
+									Columns("namespace_id"),
+									Table("collaborators"),
+									WhereEq("user_id", 2),
+								),
+							),
+						),
+					),
+					WhereEq("user_id", 2),
+				),
+				WhereEq("foo", "bar"),
+			),
+		},
 	}
 
 	checkQueries(testQueries, t)
