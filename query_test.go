@@ -7,14 +7,14 @@ type testQuery struct {
 	query    Query
 }
 
-func checkQueries(tqq []testQuery, t *testing.T) {
-	for _, tq := range tqq {
-		built := tq.query.Build()
+func checkQueries(qq []testQuery, t *testing.T) {
+	for _, q := range qq {
+		built := q.query.Build()
 
-		if built != tq.expected {
+		if built != q.expected {
 			t.Fatalf(
 				"query not as expected:\n\texpected = '%s'\n\t  actual = '%s'",
-				tq.expected,
+				q.expected,
 				built,
 			)
 		}
@@ -22,207 +22,128 @@ func checkQueries(tqq []testQuery, t *testing.T) {
 }
 
 func TestSelect(t *testing.T) {
-	testQueries := []testQuery{
+	queries := []testQuery{
 		{
-			"SELECT * FROM users WHERE username = $1",
-			Select(Columns("*"), Table("users"), WhereEq("username", "me")),
+			"SELECT * FROM users WHERE (username = $1)",
+			Select(Columns("*"), From("users"), Where("username", "=", "me")),
 		},
 		{
-			"SELECT * FROM users WHERE username = $1 OR email = $2",
+			"SELECT * FROM users WHERE (username = $1 OR email = $2)",
 			Select(
 				Columns("*"),
-				Table("users"),
-				Or(
-					WhereEq("username", "me"),
-					WhereEq("email", "me@example.com"),
-				),
+				From("users"),
+				Where("username", "=", "me"),
+				OrWhere("email", "=", "email@domain.com"),
 			),
 		},
 		{
-			"SELECT * FROM users WHERE username = $1 AND email != $2 AND age > $3 AND age <= $4 AND created_at >= $5 AND created_at < $6 AND name LIKE $7",
+			"SELECT * FROM posts WHERE (title LIKE $1) LIMIT 25 OFFSET 2",
 			Select(
 				Columns("*"),
-				Table("users"),
-				Where("username", OpEq, "me"),
-				Where("email", OpNotEq, "me@example.com"),
-				Where("age", OpGt, 20),
-				Where("age", OpLtOrEq, 100),
-				Where("created_at", OpGtOrEq, 2018),
-				Where("created_at", OpLt, 2019),
-				Where("name", OpLike, "some category"),
+				From("posts"),
+				Where("title", "LIKE", "%foo%"),
+				Limit(int64(25)),
+				Offset(int64(2)),
 			),
 		},
 		{
-			"SELECT * FROM posts WHERE user_id IN (SELECT id FROM users WHERE username = $1)",
+			"SELECT * FROM posts WHERE (user_id = $1 AND id IN (SELECT post_id FROM tags WHERE (title LIKE $2)))",
 			Select(
 				Columns("*"),
-				Table("posts"),
-				WhereInQuery("user_id",
-					Select(
-						Columns("id"),
-						Table("users"),
-						WhereEq("username", "me"),
-					),
-				),
-			),
-		},
-		{
-			"SELECT * FROM posts WHERE title LIKE $1 LIMIT 5 OFFSET 2",
-			Select(
-				Columns("*"),
-				Table("posts"),
-				WhereLike("title", "%foo%"),
-				Limit(5),
-				Offset(2),
-			),
-		},
-		{
-			"SELECT * FROM posts ORDER BY created_at DESC",
-			Select(
-				Columns("*"),
-				Table("posts"),
-				OrderDesc("created_at"),
-			),
-		},
-		{
-			"SELECT * FROM posts WHERE user_id = $1 AND id IN (SELECT post_id FROM tags WHERE title LIKE $2)",
-			Select(
-				Columns("*"),
-				Table("posts"),
-				WhereEq("user_id", 1234),
-				WhereInQuery("id",
+				From("posts"),
+				Where("user_id", "=", 1),
+				WhereQuery("id", "IN",
 					Select(
 						Columns("post_id"),
-						Table("tags"),
-						WhereLike("title", "some title"),
+						From("tags"),
+						Where("title", "LIKE", "%foo%"),
 					),
 				),
 			),
 		},
 		{
-			"SELECT * FROM posts WHERE id IN (SELECT post_id FROM tags WHERE title LIKE $1) AND category_id IN (SELECT id FROM categories WHERE name LIKE $2) AND user_id = $3",
+			"SELECT * FROM posts WHERE (id IN (SELECT post_id FROM tags WHERE (title LIKE $1)) AND category_id IN (SELECT id FROM categories WHERE (name LIKE $2)))",
 			Select(
 				Columns("*"),
-				Table("posts"),
-				WhereInQuery("id",
+				From("posts"),
+				WhereQuery("id", "IN",
 					Select(
 						Columns("post_id"),
-						Table("tags"),
-						WhereLike("title", "some title"),
+						From("tags"),
+						Where("title", "LIKE", "%foo%"),
 					),
 				),
-				WhereInQuery("category_id",
+				WhereQuery("category_id", "IN",
 					Select(
 						Columns("id"),
-						Table("categories"),
-						WhereLike("name", "some category"),
+						From("categories"),
+						Where("name", "LIKE", "%bar%"),
 					),
 				),
-				WhereEq("user_id", 1234),
 			),
 		},
 		{
-			"SELECT * FROM users WHERE id IN ($1, $2, $3, $4, $5)",
+			"SELECT * FROM users WHERE (id IN ($1, $2, $3, $4, $5))",
 			Select(
 				Columns("*"),
-				Table("users"),
-				WhereIn("id", 1, 2, 3, 4, 5),
-			),
-		},
-		{
-			"SELECT * FROM objects WHERE deleted_at IS $1 AND namespace_id IN (SELECT id FROM namespaces WHERE root_id IN (SELECT namespace_id FROM collaborators WHERE user_id = $2)) OR user_id = $3 AND foo = $4",
-			Select(
-				Columns("*"),
-				Table("objects"),
-				WhereIs("deleted_at", "NULL"),
-				Or(
-					WhereInQuery("namespace_id",
-						Select(
-							Columns("id"),
-							Table("namespaces"),
-							WhereInQuery("root_id",
-								Select(
-									Columns("namespace_id"),
-									Table("collaborators"),
-									WhereEq("user_id", 2),
-								),
-							),
-						),
-					),
-					WhereEq("user_id", 2),
-				),
-				WhereEq("foo", "bar"),
+				From("users"),
+				Where("id", "IN", 1, 2, 3, 4, 5),
 			),
 		},
 	}
 
-	checkQueries(testQueries, t)
+	checkQueries(queries, t)
 }
 
 func TestInsert(t *testing.T) {
-	testQueries := []testQuery{
+	queries := []testQuery{
 		{
 			"INSERT INTO users (email, username, password) VALUES ($1, $2, $3)",
 			Insert(
+				Into("users"),
 				Columns("email", "username", "password"),
-				Table("users"),
-				Values("me@example.com", "me", "secret"),
+				Values("me@exmaple.com", "me", "secret"),
 			),
 		},
 		{
 			"INSERT INTO users (email, username, password) VALUES ($1, $2, $3) RETURNING id, created_at",
 			Insert(
+				Into("users"),
 				Columns("email", "username", "password"),
-				Table("users"),
-				Values("me@example.com", "me", "secret"),
+				Values("me@exmaple.com", "me", "secret"),
 				Returning("id", "created_at"),
 			),
 		},
 	}
 
-	checkQueries(testQueries, t)
+	checkQueries(queries, t)
 }
 
 func TestUpdate(t *testing.T) {
-	testQueries := []testQuery{
+	queries := []testQuery{
 		{
-			"UPDATE users SET email = $1 WHERE id = $2",
+			"UPDATE users SET email = $1 WHERE (id = $2)",
 			Update(
 				Table("users"),
 				Set("email", "me@example.com"),
-				WhereEq("id", 1234),
-			),
-		},
-		{
-			"UPDATE posts SET deleted_at = NOW() WHERE user_id IN (SELECT id FROM users WHERE username = $1) RETURNING updated_at",
-			Update(
-				Table("posts"),
-				SetRaw("deleted_at", "NOW()"),
-				WhereInQuery("user_id",
-					Select(
-						Columns("id"),
-						Table("users"),
-						WhereEq("username", "me"),
-					),
-				),
-				Returning("updated_at"),
+				Where("id", "=", 1),
 			),
 		},
 	}
 
-	checkQueries(testQueries, t)
+	checkQueries(queries, t)
 }
 
 func TestDelete(t *testing.T) {
-	testQueries := []testQuery{
+	queries := []testQuery{
 		{
-			"DELETE FROM posts WHERE id = $1",
+			"DELETE FROM users WHERE (id = $1)",
 			Delete(
-				Table("posts"),
-				WhereEq("id", 1234),
+				From("users"),
+				Where("id", "=", 1),
 			),
 		},
 	}
 
-	checkQueries(testQueries, t)
+	checkQueries(queries, t)
 }
