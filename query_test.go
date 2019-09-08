@@ -37,6 +37,16 @@ func TestSelect(t *testing.T) {
 			),
 		},
 		{
+			"SELECT * FROM users WHERE (username = $1 OR email = $2) AND (registered = $3)",
+			Select(
+				Columns("*"),
+				From("users"),
+				Where("username", "=", "me"),
+				OrWhere("email", "=", "email@domain.com"),
+				Where("registered", "=", true),
+			),
+		},
+		{
 			"SELECT * FROM posts WHERE (title LIKE $1) LIMIT 25 OFFSET 2",
 			Select(
 				Columns("*"),
