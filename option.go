@@ -191,12 +191,21 @@ func Returning(cols ...string) Option {
 
 func Set(col string, val interface{}) Option {
 	return func(q Query) Query {
+		q.args = append(q.args, val)
+
+		return SetRaw(col, "?")(q)
+	}
+}
+
+func SetRaw(col string, val interface{}) Option {
+	return func(q Query) Query {
 		if q.stmt == update_ {
 			c := column{
 				col:   col,
 				op:    "=",
-				val:   "?",
+				val:   val,
 				kind_: set_,
+				cat_:  ",",
 			}
 
 			q.clauses = append(q.clauses, c)

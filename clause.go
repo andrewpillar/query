@@ -119,6 +119,10 @@ func (c column) build(buf *bytes.Buffer) {
 }
 
 func (c column) cat() string {
+	if c.kind_ == where_ {
+		return " " + c.cat_ + " "
+	}
+
 	return c.cat_ + " "
 }
 

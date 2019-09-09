@@ -139,7 +139,6 @@ func (q Query) buildInitial() string {
 					buf.WriteString(")")
 				}
 
-				buf.WriteString(" ")
 				buf.WriteString(cat)
 
 				if wrap {

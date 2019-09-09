@@ -100,6 +100,32 @@ func TestSelect(t *testing.T) {
 				Where("id", "IN", 1, 2, 3, 4, 5),
 			),
 		},
+		{
+			"SELECT * FROM builds WHERE (status = $1 AND namespace_id IN (SELECT id FROM namespaces WHERE (root_id IN (SELECT namespace_id FROM collaborators WHERE (user_id = $2))))) OR (user_id = $3) AND (status = $4) ORDER BY created_at DESC",
+			Select(
+				Columns("*"),
+				From("builds"),
+				Where("status", "=", "running"),
+				Options(
+					WhereQuery("namespace_id", "IN",
+						Select(
+							Columns("id"),
+							From("namespaces"),
+							WhereQuery("root_id", "IN",
+								Select(
+									Columns("namespace_id"),
+									From("collaborators"),
+									Where("user_id", "=", 1),
+								),
+							),
+						),
+					),
+					OrWhere("user_id", "=", 1),
+				),
+				Where("status", "=", "running"),
+				OrderDesc("created_at"),
+			),
+		},
 	}
 
 	checkQueries(queries, t)
@@ -132,10 +158,11 @@ func TestInsert(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	queries := []testQuery{
 		{
-			"UPDATE users SET email = $1 WHERE (id = $2)",
+			"UPDATE users SET email = $1, updated_at = NOW() WHERE (id = $2)",
 			Update(
 				Table("users"),
 				Set("email", "me@example.com"),
+				SetRaw("updated_at", "NOW()"),
 				Where("id", "=", 1),
 			),
 		},
