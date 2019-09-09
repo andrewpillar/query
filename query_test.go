@@ -134,6 +134,14 @@ func TestSelect(t *testing.T) {
 				WhereRaw("deleted_at", "IS NOT", "NULL"),
 			),
 		},
+		{
+			"SELECT * FROM users WHERE (id IN ($1))",
+			Select(
+				Columns("*"),
+				From("users"),
+				Where("id", "IN", 1),
+			),
+		},
 	}
 
 	checkQueries(queries, t)

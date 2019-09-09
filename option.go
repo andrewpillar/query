@@ -261,7 +261,7 @@ func Where(col, op string, vals ...interface{}) Option {
 
 		q.args = append(q.args, vals...)
 
-		if len(vals) > 1 {
+		if len(vals) > 1 || op == "IN" {
 			val = expand(vals...)
 		}
 
@@ -273,7 +273,7 @@ func WhereRaw(col, op string, vals ...interface{}) Option {
 	return func(q Query) Query {
 		var val interface{}
 
-		if len(vals) > 1 {
+		if len(vals) > 1 || op == "IN" {
 			s := make([]string, 0, len(vals))
 
 			for _, v := range vals {
