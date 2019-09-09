@@ -126,6 +126,14 @@ func TestSelect(t *testing.T) {
 				OrderDesc("created_at"),
 			),
 		},
+		{
+			"SELECT * FROM files WHERE (deleted_at IS NOT NULL)",
+			Select(
+				Columns("*"),
+				From("files"),
+				WhereRaw("deleted_at", "IS NOT", "NULL"),
+			),
+		},
 	}
 
 	checkQueries(queries, t)

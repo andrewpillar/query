@@ -1,6 +1,9 @@
 package query
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 func expand(vals ...interface{}) string {
 	s := make([]string, 0, len(vals))
@@ -263,6 +266,46 @@ func Where(col, op string, vals ...interface{}) Option {
 		}
 
 		return realWhere("AND", col, op, val)(q)
+	}
+}
+
+func WhereRaw(col, op string, vals ...interface{}) Option {
+	return func(q Query) Query {
+		var val interface{}
+
+		if len(vals) > 1 {
+			s := make([]string, 0, len(vals))
+
+			for _, v := range vals {
+				s = append(s, fmt.Sprintf("%v", v))
+			}
+
+			val = "(" + strings.Join(s, ", ") + ")"
+		} else {
+			val = vals[0]
+		}
+
+		return realWhere("AND", col, op, val)(q)
+	}
+}
+
+func OrWhereRaw(col, op string, vals ...interface{}) Option {
+	return func(q Query) Query {
+		var val interface{}
+
+		if len(vals) > 1 {
+			s := make([]string, 0, len(vals))
+
+			for _, v := range vals {
+				s = append(s, fmt.Sprintf("%v", v))
+			}
+
+			val = "(" + strings.Join(s, ", ") + ")"
+		} else {
+			val = vals[0]
+		}
+
+		return realWhere("OR", col, op, val)(q)
 	}
 }
 
