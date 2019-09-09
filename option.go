@@ -128,6 +128,16 @@ func Offset(n int64) Option {
 	}
 }
 
+func Options(opts ...Option) Option {
+	return func(q Query) Query {
+		for _, opt := range opts {
+			q = opt(q)
+		}
+
+		return q
+	}
+}
+
 func OrderAsc(col string) Option {
 	return func(q Query) Query {
 		return realOrder(col, "ASC")(q)
