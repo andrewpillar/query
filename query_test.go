@@ -142,6 +142,13 @@ func TestSelect(t *testing.T) {
 				Where("id", "IN", 1),
 			),
 		},
+		{
+			"SELECT COUNT(*) FROM users",
+			Select(
+				Count("*"),
+				From("users"),
+			),
+		},
 	}
 
 	checkQueries(queries, t)

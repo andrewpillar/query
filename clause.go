@@ -29,6 +29,10 @@ type column struct {
 	kind_ clauseKind
 }
 
+type count struct {
+	expr string
+}
+
 type list struct {
 	kind_ clauseKind
 	items []string
@@ -65,6 +69,7 @@ const (
 	offset_
 	values_
 	columns_
+	count_
 	returning_
 )
 
@@ -98,6 +103,8 @@ func (k clauseKind) build(buf *bytes.Buffer) {
 		return
 	case returning_:
 		buf.WriteString("RETURNING ")
+	case count_:
+		buf.WriteString("COUNT")
 		return
 	}
 }
@@ -128,6 +135,18 @@ func (c column) cat() string {
 
 func (c column) kind() clauseKind {
 	return c.kind_
+}
+
+func (c count) build(buf *bytes.Buffer) {
+	buf.WriteString(c.expr)
+}
+
+func (c count) cat() string {
+	return ""
+}
+
+func (c count) kind() clauseKind {
+	return count_
 }
 
 func (l list) build(buf *bytes.Buffer) {

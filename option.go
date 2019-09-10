@@ -89,6 +89,18 @@ func Columns(cols ...string) Option {
 	}
 }
 
+func Count(expr string) Option {
+	return func(q Query) Query {
+		c := count{
+			expr: expr,
+		}
+
+		q.clauses = append(q.clauses, c)
+
+		return q
+	}
+}
+
 func From(item string) Option {
 	return func(q Query) Query {
 		if q.stmt == select_ || q.stmt == delete_ {

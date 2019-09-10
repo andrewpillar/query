@@ -26,6 +26,7 @@ const (
 
 var paren map[clauseKind]struct{} = map[clauseKind]struct{}{
 	where_: struct{}{},
+	count_: struct{}{},
 }
 
 func Delete(opts ...Option) Query {
@@ -118,7 +119,9 @@ func (q Query) buildInitial() string {
 		kind := c.kind()
 
 		if _, ok := clauses[kind]; !ok {
-			clauses[kind] = struct{}{}
+			if kind != count_ {
+				clauses[kind] = struct{}{}
+			}
 
 			kind.build(buf)
 
@@ -145,13 +148,11 @@ func (q Query) buildInitial() string {
 					buf.WriteString("(")
 				}
 			} else {
-				buf.WriteString(" ")
-			}
-
-			if next.kind() != kind {
 				if _, ok := paren[kind]; ok {
-					buf.WriteString(") ")
+					buf.WriteString(")")
 				}
+
+				buf.WriteString(" ")
 			}
 		}
 
