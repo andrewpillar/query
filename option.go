@@ -155,6 +155,10 @@ func OrderDesc(col string) Option {
 
 func OrWhere(col, op string, vals ...interface{}) Option {
 	return func(q Query) Query {
+		if len(vals) == 0 {
+			return q
+		}
+
 		var val interface{} = "?"
 
 		q.args = append(q.args, vals...)
@@ -174,6 +178,30 @@ func OrWhereQuery(col, op string, q2 Query) Option {
 		q1.args = append(q1.args, q2.Args()...)
 
 		return realWhere("OR", col, op, val)(q1)
+	}
+}
+
+func OrWhereRaw(col, op string, vals ...interface{}) Option {
+	return func(q Query) Query {
+		if len(vals) == 0 {
+			return q
+		}
+
+		var val interface{}
+
+		if len(vals) > 1 {
+			s := make([]string, 0, len(vals))
+
+			for _, v := range vals {
+				s = append(s, fmt.Sprintf("%v", v))
+			}
+
+			val = "(" + strings.Join(s, ", ") + ")"
+		} else {
+			val = vals[0]
+		}
+
+		return realWhere("OR", col, op, val)(q)
 	}
 }
 
@@ -257,6 +285,10 @@ func Values(vals ...interface{}) Option {
 
 func Where(col, op string, vals ...interface{}) Option {
 	return func(q Query) Query {
+		if len(vals) == 0 {
+			return q
+		}
+
 		var val interface{} = "?"
 
 		q.args = append(q.args, vals...)
@@ -271,6 +303,10 @@ func Where(col, op string, vals ...interface{}) Option {
 
 func WhereRaw(col, op string, vals ...interface{}) Option {
 	return func(q Query) Query {
+		if len(vals) == 0 {
+			return q
+		}
+
 		var val interface{}
 
 		if len(vals) > 1 || op == "IN" {
@@ -286,26 +322,6 @@ func WhereRaw(col, op string, vals ...interface{}) Option {
 		}
 
 		return realWhere("AND", col, op, val)(q)
-	}
-}
-
-func OrWhereRaw(col, op string, vals ...interface{}) Option {
-	return func(q Query) Query {
-		var val interface{}
-
-		if len(vals) > 1 {
-			s := make([]string, 0, len(vals))
-
-			for _, v := range vals {
-				s = append(s, fmt.Sprintf("%v", v))
-			}
-
-			val = "(" + strings.Join(s, ", ") + ")"
-		} else {
-			val = vals[0]
-		}
-
-		return realWhere("OR", col, op, val)(q)
 	}
 }
 
