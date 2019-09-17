@@ -12,10 +12,6 @@ func expand(vals ...interface{}) string {
 		s = append(s, "?")
 	}
 
-	if len(s) == 0 {
-		s = append(s, "\"\"")
-	}
-
 	return "(" + strings.Join(s, ", ") + ")"
 }
 
@@ -301,6 +297,10 @@ func Values(vals ...interface{}) Option {
 
 func Where(col, op string, vals ...interface{}) Option {
 	return func(q Query) Query {
+		if len(vals) == 0 {
+			return q
+		}
+
 		var val interface{} = "?"
 
 		q.args = append(q.args, vals...)
@@ -315,6 +315,10 @@ func Where(col, op string, vals ...interface{}) Option {
 
 func WhereRaw(col, op string, vals ...interface{}) Option {
 	return func(q Query) Query {
+		if len(vals) == 0 {
+			return q
+		}
+
 		var val interface{}
 
 		if len(vals) > 1 || op == "IN" {
@@ -322,10 +326,6 @@ func WhereRaw(col, op string, vals ...interface{}) Option {
 
 			for _, v := range vals {
 				s = append(s, fmt.Sprintf("%v", v))
-			}
-
-			if len(s) == 0 {
-				s = append(s, "\"\"")
 			}
 
 			val = "(" + strings.Join(s, ", ") + ")"
