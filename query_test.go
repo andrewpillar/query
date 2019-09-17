@@ -149,6 +149,22 @@ func TestSelect(t *testing.T) {
 				From("users"),
 			),
 		},
+		{
+			"SELECT * FROM posts WHERE (id IN (\"\"))",
+			Select(
+				Columns("*"),
+				From("posts"),
+				Where("id", "IN"),
+			),
+		},
+		{
+			"SELECT * FROM posts WHERE (id IN (\"\"))",
+			Select(
+				Columns("*"),
+				From("posts"),
+				WhereRaw("id", "IN"),
+			),
+		},
 	}
 
 	checkQueries(queries, t)
