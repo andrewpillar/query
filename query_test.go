@@ -149,6 +149,34 @@ func TestSelect(t *testing.T) {
 				From("users"),
 			),
 		},
+		{
+			"SELECT * FROM variables WHERE (namespace_id IN (SELECT id FROM namespaces WHERE (root_id IN (SELECT namespace_id FROM collaborators WHERE (user_id = $1) UNION SELECT id FROM namespaces WHERE (user_id = $2)))) OR user_id = $3)",
+			Select(
+				Columns("*"),
+				From("variables"),
+				WhereQuery("namespace_id", "IN",
+					Select(
+						Columns("id"),
+						From("namespaces"),
+						WhereQuery("root_id", "IN",
+							Union(
+								Select(
+									Columns("namespace_id"),
+									From("collaborators"),
+									Where("user_id", "=", 2),
+								),
+								Select(
+									Columns("id"),
+									From("namespaces"),
+									Where("user_id", "=", 2),
+								),
+							),
+						),
+					),
+				),
+				OrWhere("user_id", "=", 2),
+			),
+		},
 	}
 
 	checkQueries(queries, t)

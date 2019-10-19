@@ -53,6 +53,10 @@ type table struct {
 	item  string
 }
 
+type union struct {
+	query Query
+}
+
 type values struct {
 	vals []interface{}
 }
@@ -71,6 +75,7 @@ const (
 	columns_
 	count_
 	returning_
+	union_
 )
 
 func (k clauseKind) build(buf *bytes.Buffer) {
@@ -205,4 +210,16 @@ func (t table) cat() string {
 
 func (t table) kind() clauseKind {
 	return t.kind_
+}
+
+func (u union) build(buf *bytes.Buffer) {
+	buf.WriteString(u.query.buildInitial())
+}
+
+func (u union) cat() string {
+	return " UNION "
+}
+
+func (u union) kind() clauseKind {
+	return union_
 }

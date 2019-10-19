@@ -65,6 +65,23 @@ func Select(opts ...Option) Query {
 	return q
 }
 
+func Union(queries ...Query) Query {
+	q := Query{
+		stmt: none_,
+	}
+
+	for _, qry := range queries {
+		u := union{
+			query: qry,
+		}
+
+		q.args = append(q.args, qry.args...)
+		q.clauses = append(q.clauses, u)
+	}
+
+	return q
+}
+
 func Update(opts ...Option) Query {
 	q := Query{
 		stmt: update_,
