@@ -29,6 +29,7 @@ var paren map[clauseKind]struct{} = map[clauseKind]struct{}{
 	count_: struct{}{},
 }
 
+// Delete creates a DELETE statement query.
 func Delete(opts ...Option) Query {
 	q := Query{
 		stmt: delete_,
@@ -41,6 +42,7 @@ func Delete(opts ...Option) Query {
 	return q
 }
 
+// Insert creates an INSERT statement query.
 func Insert(opts ...Option) Query {
 	q := Query{
 		stmt: insert_,
@@ -53,6 +55,7 @@ func Insert(opts ...Option) Query {
 	return q
 }
 
+// Select creates a SELECT statement query.
 func Select(opts ...Option) Query {
 	q := Query{
 		stmt: select_,
@@ -65,6 +68,7 @@ func Select(opts ...Option) Query {
 	return q
 }
 
+// Union adds the UNION clause to each of the queries given.
 func Union(queries ...Query) Query {
 	q := Query{
 		stmt: none_,
@@ -82,6 +86,7 @@ func Union(queries ...Query) Query {
 	return q
 }
 
+// Update creates an UPDATE statement query.
 func Update(opts ...Option) Query {
 	q := Query{
 		stmt: update_,
@@ -94,6 +99,7 @@ func Update(opts ...Option) Query {
 	return q
 }
 
+// Args returns the arguments set for the given query.
 func (q Query) Args() []interface{} {
 	return q.args
 }
@@ -135,6 +141,7 @@ func (q Query) buildInitial() string {
 
 		kind := c.kind()
 
+		// Build clauses in the query once.
 		if _, ok := clauses[kind]; !ok {
 			if kind != count_ {
 				clauses[kind] = struct{}{}
@@ -152,6 +159,12 @@ func (q Query) buildInitial() string {
 		if next != nil {
 			cat := next.cat()
 
+			// Determine if the clause needs wrapping in parentheses. We wrap
+			// clauses under these conditions:
+			//
+			//   - If the previous clause is the same, but the concatenation
+			//     string is different.
+			//   - If the next clause is a different kind from the current one.
 			if next.kind() == kind {
 				wrap := prev != nil && prev.kind() == kind && cat != c.cat()
 
@@ -183,6 +196,9 @@ func (q Query) buildInitial() string {
 	return buf.String()
 }
 
+// Build the final query string and return it. This will replace all
+// placeholder values in the query '?', with the respective PostgreSQL bind
+// param.
 func (q Query) Build() string {
 	built := q.buildInitial()
 
