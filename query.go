@@ -25,8 +25,8 @@ const (
 )
 
 var paren map[clauseKind]struct{} = map[clauseKind]struct{}{
-	where_: struct{}{},
-	count_: struct{}{},
+	where_: {},
+	count_: {},
 }
 
 // Delete creates a DELETE statement query.
@@ -132,11 +132,11 @@ func (q Query) buildInitial() string {
 		)
 
 		if i > 0 {
-			prev = q.clauses[i - 1]
+			prev = q.clauses[i-1]
 		}
 
 		if i < end {
-			next = q.clauses[i + 1]
+			next = q.clauses[i+1]
 		}
 
 		kind := c.kind()
@@ -212,7 +212,7 @@ func (q Query) Build() string {
 		query = append(query, '$')
 		query = strconv.AppendInt(query, param, 10)
 
-		built = built[i + 1:]
+		built = built[i+1:]
 	}
 
 	query = append(query, []byte(strings.TrimPrefix(built, " "))...)

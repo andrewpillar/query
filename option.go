@@ -8,7 +8,7 @@ import (
 func expand(vals ...interface{}) string {
 	s := make([]string, 0, len(vals))
 
-	for _ = range vals {
+	for range vals {
 		s = append(s, "?")
 	}
 
@@ -278,7 +278,7 @@ func Values(vals ...interface{}) Option {
 		if q.stmt == insert_ {
 			items := make([]string, 0, len(vals))
 
-			for _ = range vals {
+			for range vals {
 				items = append(items, "?")
 			}
 
