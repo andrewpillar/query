@@ -112,16 +112,12 @@ func (q Query) buildInitial() string {
 	switch q.stmt {
 	case selectStmt:
 		buf.WriteString("SELECT ")
-		break
 	case insertStmt:
 		buf.WriteString("INSERT ")
-		break
 	case updateStmt:
 		buf.WriteString("UPDATE ")
-		break
 	case deleteStmt:
 		buf.WriteString("DELETE ")
-		break
 	}
 
 	clauses := make(map[clauseKind]struct{})

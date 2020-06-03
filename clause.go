@@ -82,33 +82,24 @@ func (k clauseKind) build(buf *bytes.Buffer) {
 	switch k {
 	case fromKind:
 		buf.WriteString("FROM ")
-		return
 	case intoKind:
 		buf.WriteString("INTO ")
-		return
 	case whereKind:
 		buf.WriteString("WHERE ")
-		return
 	case orderKind:
 		buf.WriteString("ORDER BY ")
-		return
 	case setKind:
 		buf.WriteString("SET ")
 	case asKind:
 		buf.WriteString("AS ")
-		return
 	case limitKind:
 		buf.WriteString("LIMIT ")
-		return
 	case offsetKind:
 		buf.WriteString("OFFSET ")
-		return
 	case valuesKind:
 		buf.WriteString("VALUES ")
-		return
 	case countKind:
 		buf.WriteString("COUNT")
-		return
 	case returningKind:
 		buf.WriteString("RETURNING ")
 	}
