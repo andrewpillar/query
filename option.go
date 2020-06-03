@@ -57,6 +57,7 @@ func realWhere(conjunction, col, op string, val interface{}) Option {
 	}
 }
 
+// As provided As query option.
 func As(name string) Option {
 	return func(q Query) Query {
 		a := alias{
@@ -69,6 +70,7 @@ func As(name string) Option {
 	}
 }
 
+// Columns provided Columns query option.
 func Columns(cols ...string) Option {
 	return func(q Query) Query {
 		if q.stmt == insertStmt {
@@ -89,6 +91,7 @@ func Columns(cols ...string) Option {
 	}
 }
 
+// Count provided Count query option.
 func Count(expr string) Option {
 	return func(q Query) Query {
 		c := count{
@@ -101,6 +104,7 @@ func Count(expr string) Option {
 	}
 }
 
+// From provided From query option.
 func From(item string) Option {
 	return func(q Query) Query {
 		if q.stmt == selectStmt || q.stmt == deleteStmt {
@@ -116,6 +120,7 @@ func From(item string) Option {
 	}
 }
 
+// Into provided Into query option.
 func Into(item string) Option {
 	return func(q Query) Query {
 		if q.stmt == insertStmt {
@@ -131,18 +136,21 @@ func Into(item string) Option {
 	}
 }
 
+// Limit provided Limit query option.
 func Limit(n int64) Option {
 	return func(q Query) Query {
 		return realPortion(limitKind, n)(q)
 	}
 }
 
+// Offset provided Offset query option.
 func Offset(n int64) Option {
 	return func(q Query) Query {
 		return realPortion(offsetKind, n)(q)
 	}
 }
 
+// Options provided some query option.
 func Options(opts ...Option) Option {
 	return func(q Query) Query {
 		for _, opt := range opts {
@@ -153,18 +161,21 @@ func Options(opts ...Option) Option {
 	}
 }
 
+// OrderAsc provided OrderAsc query option.
 func OrderAsc(col string) Option {
 	return func(q Query) Query {
 		return realOrder(col, "ASC")(q)
 	}
 }
 
+// OrderDesc provided OrderDesc query option.
 func OrderDesc(col string) Option {
 	return func(q Query) Query {
 		return realOrder(col, "DESC")(q)
 	}
 }
 
+// OrWhere provided OrWhere query option.
 func OrWhere(col, op string, vals ...interface{}) Option {
 	return func(q Query) Query {
 		if len(vals) == 0 {
@@ -183,6 +194,7 @@ func OrWhere(col, op string, vals ...interface{}) Option {
 	}
 }
 
+// OrWhereQuery provided OrWhereQuery query option.
 func OrWhereQuery(col, op string, q2 Query) Option {
 	return func(q1 Query) Query {
 		val := "(" + q2.buildInitial() + ")"
@@ -193,6 +205,7 @@ func OrWhereQuery(col, op string, q2 Query) Option {
 	}
 }
 
+// OrWhereRaw provided OrWhereRaw query option.
 func OrWhereRaw(col, op string, vals ...interface{}) Option {
 	return func(q Query) Query {
 		if len(vals) == 0 {
@@ -217,6 +230,7 @@ func OrWhereRaw(col, op string, vals ...interface{}) Option {
 	}
 }
 
+// Returning provided Returning query option.
 func Returning(cols ...string) Option {
 	return func(q Query) Query {
 		if q.stmt == insertStmt || q.stmt == updateStmt || q.stmt == deleteStmt {
@@ -232,6 +246,7 @@ func Returning(cols ...string) Option {
 	}
 }
 
+// Set provided Set query option.
 func Set(col string, val interface{}) Option {
 	return func(q Query) Query {
 		q.args = append(q.args, val)
@@ -240,6 +255,7 @@ func Set(col string, val interface{}) Option {
 	}
 }
 
+// SetRaw provided SetRaw query option.
 func SetRaw(col string, val interface{}) Option {
 	return func(q Query) Query {
 		if q.stmt == updateStmt {
@@ -258,6 +274,7 @@ func SetRaw(col string, val interface{}) Option {
 	}
 }
 
+// Table provided Table query option.
 func Table(item string) Option {
 	return func(q Query) Query {
 		if q.stmt == updateStmt {
@@ -273,6 +290,7 @@ func Table(item string) Option {
 	}
 }
 
+// Values provided Values query option.
 func Values(vals ...interface{}) Option {
 	return func(q Query) Query {
 		if q.stmt == insertStmt {
@@ -295,6 +313,7 @@ func Values(vals ...interface{}) Option {
 	}
 }
 
+// Where provided Where query option.
 func Where(col, op string, vals ...interface{}) Option {
 	return func(q Query) Query {
 		if len(vals) == 0 {
@@ -313,6 +332,7 @@ func Where(col, op string, vals ...interface{}) Option {
 	}
 }
 
+// WhereRaw provided WhereRaw query option.
 func WhereRaw(col, op string, vals ...interface{}) Option {
 	return func(q Query) Query {
 		if len(vals) == 0 {
@@ -337,6 +357,7 @@ func WhereRaw(col, op string, vals ...interface{}) Option {
 	}
 }
 
+// WhereQuery provided WhereQuery query option.
 func WhereQuery(col, op string, q2 Query) Option {
 	return func(q1 Query) Query {
 		val := "(" + q2.buildInitial() + ")"

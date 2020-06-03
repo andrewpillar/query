@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// Option provided query option.
 type Option func(q Query) Query
 
 // Query creates a statement query.
