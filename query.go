@@ -8,6 +8,7 @@ import (
 
 type Option func(q Query) Query
 
+// Query creates a statement query.
 type Query struct {
 	stmt    statement
 	clauses []clause
@@ -17,22 +18,22 @@ type Query struct {
 type statement uint8
 
 const (
-	none_ statement = iota
-	select_
-	insert_
-	update_
-	delete_
+	noneStmt statement = iota
+	selectStmt
+	insertStmt
+	updateStmt
+	deleteStmt
 )
 
-var paren map[clauseKind]struct{} = map[clauseKind]struct{}{
-	where_: {},
-	count_: {},
+var parentheses map[clauseKind]struct{} = map[clauseKind]struct{}{
+	whereKind: {},
+	countKind: {},
 }
 
 // Delete creates a DELETE statement query.
 func Delete(opts ...Option) Query {
 	q := Query{
-		stmt: delete_,
+		stmt: deleteStmt,
 	}
 
 	for _, opt := range opts {
@@ -45,7 +46,7 @@ func Delete(opts ...Option) Query {
 // Insert creates an INSERT statement query.
 func Insert(opts ...Option) Query {
 	q := Query{
-		stmt: insert_,
+		stmt: insertStmt,
 	}
 
 	for _, opt := range opts {
@@ -58,7 +59,7 @@ func Insert(opts ...Option) Query {
 // Select creates a SELECT statement query.
 func Select(opts ...Option) Query {
 	q := Query{
-		stmt: select_,
+		stmt: selectStmt,
 	}
 
 	for _, opt := range opts {
@@ -71,7 +72,7 @@ func Select(opts ...Option) Query {
 // Union adds the UNION clause to each of the queries given.
 func Union(queries ...Query) Query {
 	q := Query{
-		stmt: none_,
+		stmt: noneStmt,
 	}
 
 	for _, qry := range queries {
@@ -89,7 +90,7 @@ func Union(queries ...Query) Query {
 // Update creates an UPDATE statement query.
 func Update(opts ...Option) Query {
 	q := Query{
-		stmt: update_,
+		stmt: updateStmt,
 	}
 
 	for _, opt := range opts {
@@ -108,16 +109,16 @@ func (q Query) buildInitial() string {
 	buf := &bytes.Buffer{}
 
 	switch q.stmt {
-	case select_:
+	case selectStmt:
 		buf.WriteString("SELECT ")
 		break
-	case insert_:
+	case insertStmt:
 		buf.WriteString("INSERT ")
 		break
-	case update_:
+	case updateStmt:
 		buf.WriteString("UPDATE ")
 		break
-	case delete_:
+	case deleteStmt:
 		buf.WriteString("DELETE ")
 		break
 	}
@@ -143,13 +144,13 @@ func (q Query) buildInitial() string {
 
 		// Build clauses in the query once.
 		if _, ok := clauses[kind]; !ok {
-			if kind != count_ {
+			if kind != countKind {
 				clauses[kind] = struct{}{}
 			}
 
 			kind.build(buf)
 
-			if _, ok := paren[kind]; ok {
+			if _, ok := parentheses[kind]; ok {
 				buf.WriteString("(")
 			}
 		}
@@ -178,7 +179,7 @@ func (q Query) buildInitial() string {
 					buf.WriteString("(")
 				}
 			} else {
-				if _, ok := paren[kind]; ok {
+				if _, ok := parentheses[kind]; ok {
 					buf.WriteString(")")
 				}
 
@@ -187,7 +188,7 @@ func (q Query) buildInitial() string {
 		}
 
 		if i == end {
-			if _, ok := paren[kind]; ok {
+			if _, ok := parentheses[kind]; ok {
 				buf.WriteString(")")
 			}
 		}

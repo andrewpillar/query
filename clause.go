@@ -22,11 +22,11 @@ type clause interface {
 type clauseKind uint8
 
 type column struct {
-	col   string
-	op    string
-	val   interface{}
-	cat_  string
-	kind_ clauseKind
+	col         string
+	op          string
+	val         interface{}
+	conjunction string
+	clauseKind  clauseKind
 }
 
 type count struct {
@@ -34,8 +34,8 @@ type count struct {
 }
 
 type list struct {
-	kind_ clauseKind
-	items []string
+	clauseKind clauseKind
+	items      []string
 }
 
 type order struct {
@@ -44,13 +44,13 @@ type order struct {
 }
 
 type portion struct {
-	kind_ clauseKind
-	n     int64
+	clauseKind clauseKind
+	n          int64
 }
 
 type table struct {
-	kind_ clauseKind
-	item  string
+	clauseKind clauseKind
+	item       string
 }
 
 type union struct {
@@ -62,57 +62,59 @@ type values struct {
 }
 
 const (
-	anon_ clauseKind = iota
-	from_
-	into_
-	where_
-	order_
-	set_
-	as_
-	limit_
-	offset_
-	values_
-	columns_
-	count_
-	returning_
-	union_
+	noneKind clauseKind = iota
+	fromKind
+	intoKind
+	whereKind
+	orderKind
+	setKind
+	asKind
+	limitKind
+	offsetKind
+	valuesKind
+	columnsKind
+	countKind
+	returningKind
+	unionKind
 )
 
 func (k clauseKind) build(buf *bytes.Buffer) {
 	switch k {
-	case from_:
+	case fromKind:
 		buf.WriteString("FROM ")
 		return
-	case into_:
+	case intoKind:
 		buf.WriteString("INTO ")
 		return
-	case where_:
+	case whereKind:
 		buf.WriteString("WHERE ")
 		return
-	case order_:
+	case orderKind:
 		buf.WriteString("ORDER BY ")
 		return
-	case set_:
+	case setKind:
 		buf.WriteString("SET ")
-	case as_:
+	case asKind:
 		buf.WriteString("AS ")
 		return
-	case limit_:
+	case limitKind:
 		buf.WriteString("LIMIT ")
 		return
-	case offset_:
+	case offsetKind:
 		buf.WriteString("OFFSET ")
 		return
-	case values_:
+	case valuesKind:
 		buf.WriteString("VALUES ")
 		return
-	case returning_:
-		buf.WriteString("RETURNING ")
-	case count_:
+	case countKind:
 		buf.WriteString("COUNT")
 		return
+	case returningKind:
+		buf.WriteString("RETURNING ")
 	}
 }
+
+// -- alias implement --
 
 func (a alias) build(buf *bytes.Buffer) {
 	buf.WriteString(a.name)
@@ -123,24 +125,28 @@ func (a alias) cat() string {
 }
 
 func (a alias) kind() clauseKind {
-	return as_
+	return asKind
 }
+
+// -- column implement --
 
 func (c column) build(buf *bytes.Buffer) {
 	fmt.Fprintf(buf, "%s %s %v", c.col, c.op, c.val)
 }
 
 func (c column) cat() string {
-	if c.kind_ == where_ {
-		return " " + c.cat_ + " "
+	if c.clauseKind == whereKind {
+		return " " + c.conjunction + " "
 	}
 
-	return c.cat_ + " "
+	return c.conjunction + " "
 }
 
 func (c column) kind() clauseKind {
-	return c.kind_
+	return c.clauseKind
 }
+
+// -- count implement --
 
 func (c count) build(buf *bytes.Buffer) {
 	buf.WriteString(c.expr)
@@ -151,17 +157,19 @@ func (c count) cat() string {
 }
 
 func (c count) kind() clauseKind {
-	return count_
+	return countKind
 }
 
+// -- list implement --
+
 func (l list) build(buf *bytes.Buffer) {
-	if l.kind_ == values_ {
+	if l.clauseKind == valuesKind {
 		buf.WriteString("(")
 	}
 
 	buf.WriteString(strings.Join(l.items, ", "))
 
-	if l.kind_ == values_ {
+	if l.clauseKind == valuesKind {
 		buf.WriteString(")")
 	}
 }
@@ -171,8 +179,10 @@ func (l list) cat() string {
 }
 
 func (l list) kind() clauseKind {
-	return l.kind_
+	return l.clauseKind
 }
+
+// -- order implement --
 
 func (o order) build(buf *bytes.Buffer) {
 	buf.WriteString(o.col)
@@ -185,8 +195,10 @@ func (o order) cat() string {
 }
 
 func (o order) kind() clauseKind {
-	return order_
+	return orderKind
 }
+
+// -- portion implement --
 
 func (p portion) build(buf *bytes.Buffer) {
 	buf.WriteString(strconv.FormatInt(p.n, 10))
@@ -197,8 +209,10 @@ func (p portion) cat() string {
 }
 
 func (p portion) kind() clauseKind {
-	return p.kind_
+	return p.clauseKind
 }
+
+// -- table implement --
 
 func (t table) build(buf *bytes.Buffer) {
 	buf.WriteString(t.item)
@@ -209,8 +223,10 @@ func (t table) cat() string {
 }
 
 func (t table) kind() clauseKind {
-	return t.kind_
+	return t.clauseKind
 }
+
+// -- union implement --
 
 func (u union) build(buf *bytes.Buffer) {
 	buf.WriteString(u.query.buildInitial())
@@ -221,5 +237,5 @@ func (u union) cat() string {
 }
 
 func (u union) kind() clauseKind {
-	return union_
+	return unionKind
 }

@@ -31,8 +31,8 @@ func realOrder(col, dir string) Option {
 func realPortion(kind clauseKind, n int64) Option {
 	return func(q Query) Query {
 		p := portion{
-			kind_: kind,
-			n:     n,
+			clauseKind: kind,
+			n:          n,
 		}
 
 		q.clauses = append(q.clauses, p)
@@ -41,14 +41,14 @@ func realPortion(kind clauseKind, n int64) Option {
 	}
 }
 
-func realWhere(cat, col, op string, val interface{}) Option {
+func realWhere(conjunction, col, op string, val interface{}) Option {
 	return func(q Query) Query {
 		c := column{
-			col:   col,
-			op:    op,
-			val:   val,
-			cat_:  cat,
-			kind_: where_,
+			col:         col,
+			op:          op,
+			val:         val,
+			conjunction: conjunction,
+			clauseKind:  whereKind,
 		}
 
 		q.clauses = append(q.clauses, c)
@@ -71,7 +71,7 @@ func As(name string) Option {
 
 func Columns(cols ...string) Option {
 	return func(q Query) Query {
-		if q.stmt == insert_ {
+		if q.stmt == insertStmt {
 			end := len(cols) - 1
 
 			cols[0] = "(" + cols[0]
@@ -79,8 +79,8 @@ func Columns(cols ...string) Option {
 		}
 
 		l := list{
-			kind_: columns_,
-			items: cols,
+			clauseKind: columnsKind,
+			items:      cols,
 		}
 
 		q.clauses = append(q.clauses, l)
@@ -103,10 +103,10 @@ func Count(expr string) Option {
 
 func From(item string) Option {
 	return func(q Query) Query {
-		if q.stmt == select_ || q.stmt == delete_ {
+		if q.stmt == selectStmt || q.stmt == deleteStmt {
 			t := table{
-				kind_: from_,
-				item:  item,
+				clauseKind: fromKind,
+				item:       item,
 			}
 
 			q.clauses = append(q.clauses, t)
@@ -118,10 +118,10 @@ func From(item string) Option {
 
 func Into(item string) Option {
 	return func(q Query) Query {
-		if q.stmt == insert_ {
+		if q.stmt == insertStmt {
 			t := table{
-				kind_: into_,
-				item:  item,
+				clauseKind: intoKind,
+				item:       item,
 			}
 
 			q.clauses = append(q.clauses, t)
@@ -133,13 +133,13 @@ func Into(item string) Option {
 
 func Limit(n int64) Option {
 	return func(q Query) Query {
-		return realPortion(limit_, n)(q)
+		return realPortion(limitKind, n)(q)
 	}
 }
 
 func Offset(n int64) Option {
 	return func(q Query) Query {
-		return realPortion(offset_, n)(q)
+		return realPortion(offsetKind, n)(q)
 	}
 }
 
@@ -219,10 +219,10 @@ func OrWhereRaw(col, op string, vals ...interface{}) Option {
 
 func Returning(cols ...string) Option {
 	return func(q Query) Query {
-		if q.stmt == insert_ || q.stmt == update_ || q.stmt == delete_ {
+		if q.stmt == insertStmt || q.stmt == updateStmt || q.stmt == deleteStmt {
 			l := list{
-				kind_: returning_,
-				items: cols,
+				clauseKind: returningKind,
+				items:      cols,
 			}
 
 			q.clauses = append(q.clauses, l)
@@ -242,13 +242,13 @@ func Set(col string, val interface{}) Option {
 
 func SetRaw(col string, val interface{}) Option {
 	return func(q Query) Query {
-		if q.stmt == update_ {
+		if q.stmt == updateStmt {
 			c := column{
-				col:   col,
-				op:    "=",
-				val:   val,
-				kind_: set_,
-				cat_:  ",",
+				col:         col,
+				op:          "=",
+				val:         val,
+				conjunction: ",",
+				clauseKind:  setKind,
 			}
 
 			q.clauses = append(q.clauses, c)
@@ -260,10 +260,10 @@ func SetRaw(col string, val interface{}) Option {
 
 func Table(item string) Option {
 	return func(q Query) Query {
-		if q.stmt == update_ {
+		if q.stmt == updateStmt {
 			t := table{
-				kind_: anon_,
-				item:  item,
+				clauseKind: noneKind,
+				item:       item,
 			}
 
 			q.clauses = append(q.clauses, t)
@@ -275,7 +275,7 @@ func Table(item string) Option {
 
 func Values(vals ...interface{}) Option {
 	return func(q Query) Query {
-		if q.stmt == insert_ {
+		if q.stmt == insertStmt {
 			items := make([]string, 0, len(vals))
 
 			for range vals {
@@ -283,8 +283,8 @@ func Values(vals ...interface{}) Option {
 			}
 
 			l := list{
-				kind_: values_,
-				items: items,
+				clauseKind: valuesKind,
+				items:      items,
 			}
 
 			q.args = append(q.args, vals...)
