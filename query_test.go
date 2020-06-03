@@ -1,21 +1,33 @@
 package query
 
-import "testing"
+import (
+	"testing"
+)
 
 type testQuery struct {
-	expected string
-	query    Query
+	postgresExpected string
+	mysqlExpected    string
+	query            Query
 }
 
 func checkQueries(qq []testQuery, t *testing.T) {
 	for _, q := range qq {
-		built := q.query.Build()
+		postgresBuilt := q.query.Build()
 
-		if built != q.expected {
+		if postgresBuilt != q.postgresExpected {
 			t.Fatalf(
 				"query not as expected:\n\texpected = '%s'\n\t  actual = '%s'",
-				q.expected,
-				built,
+				q.postgresExpected,
+				postgresBuilt,
+			)
+		}
+
+		mysqlBuilt := q.query.BuildMySQL()
+		if mysqlBuilt != q.mysqlExpected {
+			t.Fatalf(
+				"query not as expected:\n\texpected = '%s'\n\t  actual = '%s'",
+				q.mysqlExpected,
+				mysqlBuilt,
 			)
 		}
 	}
@@ -25,10 +37,12 @@ func TestSelect(t *testing.T) {
 	queries := []testQuery{
 		{
 			"SELECT * FROM users WHERE (username = $1)",
+			"SELECT * FROM users WHERE (username = ?)",
 			Select(Columns("*"), From("users"), Where("username", "=", "me")),
 		},
 		{
 			"SELECT * FROM users WHERE (username = $1 OR email = $2)",
+			"SELECT * FROM users WHERE (username = ? OR email = ?)",
 			Select(
 				Columns("*"),
 				From("users"),
@@ -38,6 +52,7 @@ func TestSelect(t *testing.T) {
 		},
 		{
 			"SELECT * FROM users WHERE (username = $1 OR email = $2) AND (registered = $3)",
+			"SELECT * FROM users WHERE (username = ? OR email = ?) AND (registered = ?)",
 			Select(
 				Columns("*"),
 				From("users"),
@@ -48,6 +63,7 @@ func TestSelect(t *testing.T) {
 		},
 		{
 			"SELECT * FROM posts WHERE (title LIKE $1) LIMIT 25 OFFSET 2",
+			"SELECT * FROM posts WHERE (title LIKE ?) LIMIT 25 OFFSET 2",
 			Select(
 				Columns("*"),
 				From("posts"),
@@ -58,6 +74,7 @@ func TestSelect(t *testing.T) {
 		},
 		{
 			"SELECT * FROM posts WHERE (user_id = $1 AND id IN (SELECT post_id FROM tags WHERE (title LIKE $2)))",
+			"SELECT * FROM posts WHERE (user_id = ? AND id IN (SELECT post_id FROM tags WHERE (title LIKE ?)))",
 			Select(
 				Columns("*"),
 				From("posts"),
@@ -73,6 +90,7 @@ func TestSelect(t *testing.T) {
 		},
 		{
 			"SELECT * FROM posts WHERE (id IN (SELECT post_id FROM tags WHERE (title LIKE $1)) AND category_id IN (SELECT id FROM categories WHERE (name LIKE $2)))",
+			"SELECT * FROM posts WHERE (id IN (SELECT post_id FROM tags WHERE (title LIKE ?)) AND category_id IN (SELECT id FROM categories WHERE (name LIKE ?)))",
 			Select(
 				Columns("*"),
 				From("posts"),
@@ -94,6 +112,7 @@ func TestSelect(t *testing.T) {
 		},
 		{
 			"SELECT * FROM users WHERE (id IN ($1, $2, $3, $4, $5))",
+			"SELECT * FROM users WHERE (id IN (?, ?, ?, ?, ?))",
 			Select(
 				Columns("*"),
 				From("users"),
@@ -102,6 +121,7 @@ func TestSelect(t *testing.T) {
 		},
 		{
 			"SELECT * FROM builds WHERE (status = $1 AND namespace_id IN (SELECT id FROM namespaces WHERE (root_id IN (SELECT namespace_id FROM collaborators WHERE (user_id = $2))))) OR (user_id = $3) AND (status = $4) ORDER BY created_at DESC",
+			"SELECT * FROM builds WHERE (status = ? AND namespace_id IN (SELECT id FROM namespaces WHERE (root_id IN (SELECT namespace_id FROM collaborators WHERE (user_id = ?))))) OR (user_id = ?) AND (status = ?) ORDER BY created_at DESC",
 			Select(
 				Columns("*"),
 				From("builds"),
@@ -128,6 +148,7 @@ func TestSelect(t *testing.T) {
 		},
 		{
 			"SELECT * FROM files WHERE (deleted_at IS NOT NULL)",
+			"SELECT * FROM files WHERE (deleted_at IS NOT NULL)",
 			Select(
 				Columns("*"),
 				From("files"),
@@ -136,6 +157,7 @@ func TestSelect(t *testing.T) {
 		},
 		{
 			"SELECT * FROM users WHERE (id IN ($1))",
+			"SELECT * FROM users WHERE (id IN (?))",
 			Select(
 				Columns("*"),
 				From("users"),
@@ -144,6 +166,7 @@ func TestSelect(t *testing.T) {
 		},
 		{
 			"SELECT COUNT(*) FROM users",
+			"SELECT COUNT(*) FROM users",
 			Select(
 				Count("*"),
 				From("users"),
@@ -151,6 +174,7 @@ func TestSelect(t *testing.T) {
 		},
 		{
 			"SELECT * FROM variables WHERE (namespace_id IN (SELECT id FROM namespaces WHERE (root_id IN (SELECT namespace_id FROM collaborators WHERE (user_id = $1) UNION SELECT id FROM namespaces WHERE (user_id = $2)))) OR user_id = $3)",
+			"SELECT * FROM variables WHERE (namespace_id IN (SELECT id FROM namespaces WHERE (root_id IN (SELECT namespace_id FROM collaborators WHERE (user_id = ?) UNION SELECT id FROM namespaces WHERE (user_id = ?)))) OR user_id = ?)",
 			Select(
 				Columns("*"),
 				From("variables"),
@@ -186,6 +210,7 @@ func TestInsert(t *testing.T) {
 	queries := []testQuery{
 		{
 			"INSERT INTO users (email, username, password) VALUES ($1, $2, $3)",
+			"INSERT INTO users (email, username, password) VALUES (?, ?, ?)",
 			Insert(
 				Into("users"),
 				Columns("email", "username", "password"),
@@ -194,6 +219,7 @@ func TestInsert(t *testing.T) {
 		},
 		{
 			"INSERT INTO users (email, username, password) VALUES ($1, $2, $3) RETURNING id, created_at",
+			"INSERT INTO users (email, username, password) VALUES (?, ?, ?) RETURNING id, created_at",
 			Insert(
 				Into("users"),
 				Columns("email", "username", "password"),
@@ -210,6 +236,7 @@ func TestUpdate(t *testing.T) {
 	queries := []testQuery{
 		{
 			"UPDATE users SET email = $1, updated_at = NOW() WHERE (id = $2)",
+			"UPDATE users SET email = ?, updated_at = NOW() WHERE (id = ?)",
 			Update(
 				Table("users"),
 				Set("email", "me@example.com"),
@@ -226,6 +253,7 @@ func TestDelete(t *testing.T) {
 	queries := []testQuery{
 		{
 			"DELETE FROM users WHERE (id = $1)",
+			"DELETE FROM users WHERE (id = ?)",
 			Delete(
 				From("users"),
 				Where("id", "=", 1),

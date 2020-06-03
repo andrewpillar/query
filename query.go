@@ -221,3 +221,9 @@ func (q Query) Build() string {
 
 	return string(query)
 }
+
+// BuildMySQL the final query string and return it.
+func (q Query) BuildMySQL() string {
+	built := q.buildInitial()
+	return built
+}
