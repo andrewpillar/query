@@ -31,8 +31,8 @@ func realOrder(col, dir string) Option {
 func realPortion(kind clauseKind, n int64) Option {
 	return func(q Query) Query {
 		p := portion{
-			kind_: kind,
-			n:     n,
+			clauseKind: kind,
+			n:          n,
 		}
 
 		q.clauses = append(q.clauses, p)
@@ -41,14 +41,14 @@ func realPortion(kind clauseKind, n int64) Option {
 	}
 }
 
-func realWhere(cat, col, op string, val interface{}) Option {
+func realWhere(conjunction, col, op string, val interface{}) Option {
 	return func(q Query) Query {
 		c := column{
-			col:   col,
-			op:    op,
-			val:   val,
-			cat_:  cat,
-			kind_: where_,
+			col:         col,
+			op:          op,
+			val:         val,
+			conjunction: conjunction,
+			clauseKind:  whereKind,
 		}
 
 		q.clauses = append(q.clauses, c)
@@ -57,6 +57,7 @@ func realWhere(cat, col, op string, val interface{}) Option {
 	}
 }
 
+// As provided As query option.
 func As(name string) Option {
 	return func(q Query) Query {
 		a := alias{
@@ -69,9 +70,10 @@ func As(name string) Option {
 	}
 }
 
+// Columns provided Columns query option.
 func Columns(cols ...string) Option {
 	return func(q Query) Query {
-		if q.stmt == insert_ {
+		if q.stmt == insertStmt {
 			end := len(cols) - 1
 
 			cols[0] = "(" + cols[0]
@@ -79,8 +81,8 @@ func Columns(cols ...string) Option {
 		}
 
 		l := list{
-			kind_: columns_,
-			items: cols,
+			clauseKind: columnsKind,
+			items:      cols,
 		}
 
 		q.clauses = append(q.clauses, l)
@@ -89,6 +91,7 @@ func Columns(cols ...string) Option {
 	}
 }
 
+// Count provided Count query option.
 func Count(expr string) Option {
 	return func(q Query) Query {
 		c := count{
@@ -101,12 +104,13 @@ func Count(expr string) Option {
 	}
 }
 
+// From provided From query option.
 func From(item string) Option {
 	return func(q Query) Query {
-		if q.stmt == select_ || q.stmt == delete_ {
+		if q.stmt == selectStmt || q.stmt == deleteStmt {
 			t := table{
-				kind_: from_,
-				item:  item,
+				clauseKind: fromKind,
+				item:       item,
 			}
 
 			q.clauses = append(q.clauses, t)
@@ -116,12 +120,13 @@ func From(item string) Option {
 	}
 }
 
+// Into provided Into query option.
 func Into(item string) Option {
 	return func(q Query) Query {
-		if q.stmt == insert_ {
+		if q.stmt == insertStmt {
 			t := table{
-				kind_: into_,
-				item:  item,
+				clauseKind: intoKind,
+				item:       item,
 			}
 
 			q.clauses = append(q.clauses, t)
@@ -131,18 +136,21 @@ func Into(item string) Option {
 	}
 }
 
+// Limit provided Limit query option.
 func Limit(n int64) Option {
 	return func(q Query) Query {
-		return realPortion(limit_, n)(q)
+		return realPortion(limitKind, n)(q)
 	}
 }
 
+// Offset provided Offset query option.
 func Offset(n int64) Option {
 	return func(q Query) Query {
-		return realPortion(offset_, n)(q)
+		return realPortion(offsetKind, n)(q)
 	}
 }
 
+// Options provided some query option.
 func Options(opts ...Option) Option {
 	return func(q Query) Query {
 		for _, opt := range opts {
@@ -153,18 +161,21 @@ func Options(opts ...Option) Option {
 	}
 }
 
+// OrderAsc provided OrderAsc query option.
 func OrderAsc(col string) Option {
 	return func(q Query) Query {
 		return realOrder(col, "ASC")(q)
 	}
 }
 
+// OrderDesc provided OrderDesc query option.
 func OrderDesc(col string) Option {
 	return func(q Query) Query {
 		return realOrder(col, "DESC")(q)
 	}
 }
 
+// OrWhere provided OrWhere query option.
 func OrWhere(col, op string, vals ...interface{}) Option {
 	return func(q Query) Query {
 		if len(vals) == 0 {
@@ -183,6 +194,7 @@ func OrWhere(col, op string, vals ...interface{}) Option {
 	}
 }
 
+// OrWhereQuery provided OrWhereQuery query option.
 func OrWhereQuery(col, op string, q2 Query) Option {
 	return func(q1 Query) Query {
 		val := "(" + q2.buildInitial() + ")"
@@ -193,6 +205,7 @@ func OrWhereQuery(col, op string, q2 Query) Option {
 	}
 }
 
+// OrWhereRaw provided OrWhereRaw query option.
 func OrWhereRaw(col, op string, vals ...interface{}) Option {
 	return func(q Query) Query {
 		if len(vals) == 0 {
@@ -217,12 +230,13 @@ func OrWhereRaw(col, op string, vals ...interface{}) Option {
 	}
 }
 
+// Returning provided Returning query option.
 func Returning(cols ...string) Option {
 	return func(q Query) Query {
-		if q.stmt == insert_ || q.stmt == update_ || q.stmt == delete_ {
+		if q.stmt == insertStmt || q.stmt == updateStmt || q.stmt == deleteStmt {
 			l := list{
-				kind_: returning_,
-				items: cols,
+				clauseKind: returningKind,
+				items:      cols,
 			}
 
 			q.clauses = append(q.clauses, l)
@@ -232,6 +246,7 @@ func Returning(cols ...string) Option {
 	}
 }
 
+// Set provided Set query option.
 func Set(col string, val interface{}) Option {
 	return func(q Query) Query {
 		q.args = append(q.args, val)
@@ -240,15 +255,16 @@ func Set(col string, val interface{}) Option {
 	}
 }
 
+// SetRaw provided SetRaw query option.
 func SetRaw(col string, val interface{}) Option {
 	return func(q Query) Query {
-		if q.stmt == update_ {
+		if q.stmt == updateStmt {
 			c := column{
-				col:   col,
-				op:    "=",
-				val:   val,
-				kind_: set_,
-				cat_:  ",",
+				col:         col,
+				op:          "=",
+				val:         val,
+				conjunction: ",",
+				clauseKind:  setKind,
 			}
 
 			q.clauses = append(q.clauses, c)
@@ -258,12 +274,13 @@ func SetRaw(col string, val interface{}) Option {
 	}
 }
 
+// Table provided Table query option.
 func Table(item string) Option {
 	return func(q Query) Query {
-		if q.stmt == update_ {
+		if q.stmt == updateStmt {
 			t := table{
-				kind_: anon_,
-				item:  item,
+				clauseKind: noneKind,
+				item:       item,
 			}
 
 			q.clauses = append(q.clauses, t)
@@ -273,9 +290,10 @@ func Table(item string) Option {
 	}
 }
 
+// Values provided Values query option.
 func Values(vals ...interface{}) Option {
 	return func(q Query) Query {
-		if q.stmt == insert_ {
+		if q.stmt == insertStmt {
 			items := make([]string, 0, len(vals))
 
 			for range vals {
@@ -283,8 +301,8 @@ func Values(vals ...interface{}) Option {
 			}
 
 			l := list{
-				kind_: values_,
-				items: items,
+				clauseKind: valuesKind,
+				items:      items,
 			}
 
 			q.args = append(q.args, vals...)
@@ -295,6 +313,7 @@ func Values(vals ...interface{}) Option {
 	}
 }
 
+// Where provided Where query option.
 func Where(col, op string, vals ...interface{}) Option {
 	return func(q Query) Query {
 		if len(vals) == 0 {
@@ -313,6 +332,7 @@ func Where(col, op string, vals ...interface{}) Option {
 	}
 }
 
+// WhereRaw provided WhereRaw query option.
 func WhereRaw(col, op string, vals ...interface{}) Option {
 	return func(q Query) Query {
 		if len(vals) == 0 {
@@ -337,6 +357,7 @@ func WhereRaw(col, op string, vals ...interface{}) Option {
 	}
 }
 
+// WhereQuery provided WhereQuery query option.
 func WhereQuery(col, op string, q2 Query) Option {
 	return func(q1 Query) Query {
 		val := "(" + q2.buildInitial() + ")"
