@@ -194,12 +194,6 @@ func (q Query) buildInitial() string {
 	return buf.String()
 }
 
-// BuildMySQL the final query string and return it.
-func (q Query) BuildMySQL() string {
-	built := q.buildInitial()
-	return built
-}
-
 // Build the final query string and return it. This will replace all
 // placeholder values in the query '?', with the respective PostgreSQL bind
 // param.
