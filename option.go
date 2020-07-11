@@ -186,7 +186,7 @@ func OrWhere(col, op string, vals ...interface{}) Option {
 
 		q.args = append(q.args, vals...)
 
-		if len(vals) > 1 {
+		if len(vals) > 1 || op == "IN" {
 			val = expand(vals...)
 		}
 

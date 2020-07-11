@@ -231,6 +231,15 @@ func TestDelete(t *testing.T) {
 				Where("id", "=", 1),
 			),
 		},
+		{
+			"DELETE FROM namespaces WHERE (id IN ($1) OR parent_id IN ($2) OR root_id IN ($3))",
+			Delete(
+				From("namespaces"),
+				Where("id", "IN", 1),
+				OrWhere("parent_id", "IN", 1),
+				OrWhere("root_id", "IN", 1),
+			),
+		},
 	}
 
 	checkQueries(queries, t)

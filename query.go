@@ -212,8 +212,5 @@ func (q Query) Build() string {
 
 		built = built[i+1:]
 	}
-
-	query = append(query, []byte(strings.TrimPrefix(built, " "))...)
-
-	return string(query)
+	return string(append(query, []byte(strings.TrimPrefix(built, " "))...))
 }
