@@ -129,7 +129,6 @@ func (c column) cat() string {
 	if c.clauseKind == whereKind {
 		return " " + c.conjunction + " "
 	}
-
 	return c.conjunction + " "
 }
 

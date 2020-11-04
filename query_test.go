@@ -37,6 +37,15 @@ func TestSelect(t *testing.T) {
 			),
 		},
 		{
+			"SELECT * FROM keys WHERE (name = $1 AND namespace_id IS NULL)",
+			Select(
+				Columns("*"),
+				From("keys"),
+				Where("name", "=", "id_rsa"),
+				WhereRaw("namespace_id", "IS", "NULL"),
+			),
+		},
+		{
 			"SELECT * FROM users WHERE (username = $1 OR email = $2) AND (registered = $3)",
 			Select(
 				Columns("*"),

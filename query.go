@@ -179,7 +179,6 @@ func (q Query) buildInitial() string {
 				if _, ok := parentheses[kind]; ok {
 					buf.WriteString(")")
 				}
-
 				buf.WriteString(" ")
 			}
 		}
@@ -190,7 +189,6 @@ func (q Query) buildInitial() string {
 			}
 		}
 	}
-
 	return buf.String()
 }
 
@@ -212,5 +210,5 @@ func (q Query) Build() string {
 
 		built = built[i+1:]
 	}
-	return string(append(query, []byte(strings.TrimPrefix(built, " "))...))
+	return string(append(query, []byte(built)...))
 }
