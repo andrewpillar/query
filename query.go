@@ -1,132 +1,172 @@
 package query
 
 import (
-	"bytes"
 	"strconv"
 	"strings"
 )
 
-// Option provided query option.
-type Option func(q Query) Query
+type statement uint
 
-// Query creates a statement query.
+// Option is the type for the first class functions that should be used for
+// modifying a Query as it is being built. This will be passed the latest
+// state of the Query, and should return that same Query once any modifications
+// have been made.
+type Option func(Query) Query
+
+// Query contains the state of a Query that is being built. The only way this
+// should be modified is via the use of the Option first class function.
 type Query struct {
 	stmt    statement
-	clauses []clause
+	table   string
+	exprs   []Expr
+	clauses []Clause
 	args    []interface{}
 }
 
-type statement uint8
-
+//go:generate stringer -type statement -linecomment
 const (
-	noneStmt statement = iota
-	selectStmt
-	insertStmt
-	updateStmt
-	deleteStmt
+	_Stmt statement = iota //
+	_Delete                // DELETE
+	_Insert                // INSERT
+	_Select                // SELECT
+	_Update                // UPDATE
 )
 
-var parentheses map[clauseKind]struct{} = map[clauseKind]struct{}{
-	whereKind: {},
-	countKind: {},
-}
-
-// Delete creates a DELETE statement query.
-func Delete(opts ...Option) Query {
+// Delete builds up a DELETE query on the given table applying the given
+// options.
+func Delete(table string, opts ...Option) Query {
 	q := Query{
-		stmt: deleteStmt,
+		stmt:  _Delete,
+		table: table,
 	}
 
 	for _, opt := range opts {
 		q = opt(q)
 	}
-
 	return q
 }
 
-// Insert creates an INSERT statement query.
-func Insert(opts ...Option) Query {
+// Insert builds up an INSERT query on the given table using the given leading
+// expression, and applying the given options.
+func Insert(table string, expr Expr, clauses ...Clause) Query {
+	return Query{
+		stmt:    _Insert,
+		table:   table,
+		exprs:   []Expr{expr},
+		clauses: clauses,
+	}
+}
+
+// Select will build up a SELECT query using the given leading expression, and
+// applying the given options.
+func Select(expr Expr, opts ...Option) Query {
 	q := Query{
-		stmt: insertStmt,
+		stmt:  _Select,
+		exprs: []Expr{expr},
 	}
 
 	for _, opt := range opts {
 		q = opt(q)
 	}
-
 	return q
 }
 
-// Select creates a SELECT statement query.
-func Select(opts ...Option) Query {
+// Update will build up an UPDATE query on the given table applying the given
+// options.
+func Update(table string, opts ...Option) Query {
 	q := Query{
-		stmt: selectStmt,
+		stmt:  _Update,
+		table: table,
 	}
 
 	for _, opt := range opts {
 		q = opt(q)
 	}
-
 	return q
 }
 
-// Union adds the UNION clause to each of the queries given.
+// Union returns a new Query that applies the UNION clause to all fo the given
+// queries. This allows for multiple queries to be used within a single query.
 func Union(queries ...Query) Query {
-	q := Query{
-		stmt: noneStmt,
-	}
+	var q0 Query
 
-	for _, qry := range queries {
-		u := union{
-			query: qry,
+	for _, q := range queries {
+		q0.args = append(q0.args, q.args...)
+		q0.clauses = append(q0.clauses, unionClause{
+			q: q,
+		})
+	}
+	return q0
+}
+
+// Options applies all of the given options to the current query being built.
+func Options(opts ...Option) Option {
+	return func(q Query) Query {
+		for _, opt := range opts {
+			q = opt(q)
 		}
-
-		q.args = append(q.args, qry.args...)
-		q.clauses = append(q.clauses, u)
+		return q
 	}
-
-	return q
 }
 
-// Update creates an UPDATE statement query.
-func Update(opts ...Option) Query {
-	q := Query{
-		stmt: updateStmt,
+// conj returns the string that should be used for conjoining multiple clauses
+// of the same type.
+func (q Query) conj(cl Clause) string {
+	if cl == nil {
+		return ""
 	}
 
-	for _, opt := range opts {
-		q = opt(q)
+	switch v := cl.(type) {
+	case whereClause:
+		return " " + v.conjunction + " "
+	case unionClause:
+		return " " + cl.Kind().String() + " "
+	case setClause:
+		return ", "
+	default:
+		return " "
 	}
-
-	return q
 }
 
-// Args returns the arguments set for the given query.
-func (q Query) Args() []interface{} {
-	return q.args
-}
-
+// buildInitial builds up the initial query using ? as the placeholder. This
+// will correctly wrap the portions of the query in parenthese depending on the
+// clauses in the query, and how these clauses are conjoined.
 func (q Query) buildInitial() string {
-	buf := &bytes.Buffer{}
+	var buf strings.Builder
+
+	buf.WriteString(q.stmt.String())
 
 	switch q.stmt {
-	case selectStmt:
-		buf.WriteString("SELECT ")
-	case insertStmt:
-		buf.WriteString("INSERT ")
-	case updateStmt:
-		buf.WriteString("UPDATE ")
-	case deleteStmt:
-		buf.WriteString("DELETE ")
+	case _Insert:
+		buf.WriteString(" INTO " + q.table)
+	case _Update:
+		buf.WriteString(" " + q.table + " ")
+	case _Delete:
+		buf.WriteString(" FROM " + q.table + " ")
+	}
+
+	for _, expr := range q.exprs {
+		buf.WriteByte(' ')
+
+		if q.stmt == _Insert {
+			buf.WriteByte('(')
+		}
+
+		buf.WriteString(expr.Build())
+
+		if q.stmt == _Insert {
+			buf.WriteByte(')')
+		}
+		buf.WriteByte(' ')
 	}
 
 	clauses := make(map[clauseKind]struct{})
 	end := len(q.clauses) - 1
 
-	for i, c := range q.clauses {
+	for i, cl := range q.clauses {
 		var (
-			prev clause
-			next clause
+			prev Clause
+			next Clause
 		)
 
 		if i > 0 {
@@ -137,78 +177,85 @@ func (q Query) buildInitial() string {
 			next = q.clauses[i+1]
 		}
 
-		kind := c.kind()
+		kind := cl.Kind()
 
-		// Build clauses in the query once.
-		if _, ok := clauses[kind]; !ok {
-			if kind != countKind {
+		if kind != _UnionClause {
+			// Write the string of the clause kind only once, this avoids something
+			// like multiple WHERE clauses being built into the query.
+			if _, ok := clauses[kind]; !ok {
 				clauses[kind] = struct{}{}
-			}
 
-			kind.build(buf)
+				buf.WriteString(kind.String() + " ")
 
-			if _, ok := parentheses[kind]; ok {
-				buf.WriteString("(")
+				if kind == _WhereClause {
+					buf.WriteByte('(')
+				}
 			}
 		}
 
-		c.build(buf)
+		buf.WriteString(cl.Build())
 
 		if next != nil {
-			cat := next.cat()
+			conj := q.conj(next)
 
 			// Determine if the clause needs wrapping in parentheses. We wrap
 			// clauses under these conditions:
 			//
-			//   - If the previous clause is the same, but the concatenation
-			//     string is different.
-			//   - If the next clause is a different kind from the current one.
-			if next.kind() == kind {
-				wrap := prev != nil && prev.kind() == kind && cat != c.cat()
+			// - If the next clause is a different kind from the current one
+			if next.Kind() == kind {
+				wrap := false
 
-				if wrap {
-					buf.WriteString(")")
+				if prev != nil {
+					// Wrap the clause in parentheses if we have a different
+					// conjunction string.
+					wrap = (prev.Kind() == kind) && (conj != q.conj(cl))
 				}
 
-				buf.WriteString(cat)
+				if wrap {
+					buf.WriteByte(')')
+				}
+
+				buf.WriteString(conj)
 
 				if wrap {
-					buf.WriteString("(")
+					buf.WriteByte('(')
 				}
 			} else {
-				if _, ok := parentheses[kind]; ok {
-					buf.WriteString(")")
+				if kind == _WhereClause {
+					buf.WriteByte(')')
 				}
-				buf.WriteString(" ")
+				buf.WriteByte(' ')
 			}
 		}
 
-		if i == end {
-			if _, ok := parentheses[kind]; ok {
-				buf.WriteString(")")
-			}
+		if i == end && kind == _WhereClause {
+			buf.WriteByte(')')
 		}
 	}
 	return buf.String()
 }
 
-// Build the final query string and return it. This will replace all
-// placeholder values in the query '?', with the respective PostgreSQL bind
-// param.
-func (q Query) Build() string {
-	built := q.buildInitial()
+// Args returns a slice of all the arguments that have been added to the given
+// query.
+func (q Query) Args() []interface{} { return q.args }
 
-	query := make([]byte, 0, len(built))
+// Build builds up the query. It will initially create a query using ? as the
+// placeholder for arguments. Once built up it will replace the ? with $n where
+// n is the number of the argument.
+func (q Query) Build() string {
+	s := q.buildInitial()
+
+	query := make([]byte, 0, len(s))
 	param := int64(0)
 
-	for i := strings.Index(built, "?"); i != -1; i = strings.Index(built, "?") {
+	for i := strings.Index(s, "?"); i != -1; i = strings.Index(s, "?") {
 		param++
 
-		query = append(query, built[:i]...)
+		query = append(query, s[:i]...)
 		query = append(query, '$')
 		query = strconv.AppendInt(query, param, 10)
 
-		built = built[i+1:]
+		s = s[i+1:]
 	}
-	return string(append(query, []byte(built)...))
+	return string(append(query, []byte(s)...))
 }

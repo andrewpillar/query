@@ -1,231 +1,252 @@
 package query
 
 import (
-	"bytes"
-	"fmt"
 	"strconv"
 	"strings"
 )
 
-type alias struct {
-	name string
+type clauseKind uint
+
+type fromClause struct {
+	table string
 }
 
-type clause interface {
-	build(buf *bytes.Buffer)
-
-	cat() string
-
-	kind() clauseKind
+type intoClause struct {
+	table string
 }
 
-type clauseKind uint8
+type limitClause int64
 
-type column struct {
-	col         string
-	op          string
-	val         interface{}
+type offsetClause int64
+
+type orderClause struct {
+	cols []string
+	dir  string
+}
+
+type returningClause struct {
+	cols []string
+}
+
+type setClause struct {
+	col  string
+	expr Expr
+}
+
+type unionClause struct {
+	q Query
+}
+
+type valuesClause struct {
+	items []string
+	args  []interface{}
+}
+
+type whereClause struct {
 	conjunction string
-	clauseKind  clauseKind
+	op          string
+	left        Expr
+	right       Expr
 }
 
-type count struct {
-	expr string
+// Clause is a Query expression that will typically represent one of the
+// following SQL clauses, FROM, LIMIT, OFFSET, ORDER BY, UNION, VALUES,
+// WHERE, RETURNING, and SET.
+type Clause interface {
+	Expr
+
+	// Kind returns the kind of the current Clause.
+	Kind() clauseKind
 }
 
-type list struct {
-	clauseKind clauseKind
-	items      []string
-}
-
-type order struct {
-	col string
-	dir string
-}
-
-type portion struct {
-	clauseKind clauseKind
-	n          int64
-}
-
-type table struct {
-	clauseKind clauseKind
-	item       string
-}
-
-type union struct {
-	query Query
-}
-
-type values struct {
-	vals []interface{}
-}
-
+//go:generate stringer -type clauseKind -linecomment
 const (
-	noneKind clauseKind = iota
-	fromKind
-	intoKind
-	whereKind
-	orderKind
-	setKind
-	asKind
-	limitKind
-	offsetKind
-	valuesKind
-	columnsKind
-	countKind
-	returningKind
-	unionKind
+	_FromClause clauseKind = iota // FROM
+	_LimitClause                  // LIMIT
+	_OffsetClause                 // OFFSET
+	_OrderClause                  // ORDER BY
+	_UnionClause                  // UNION
+	_ValuesClause                 // VALUES
+	_WhereClause                  // WHERE
+	_ReturningClause              // RETURNING
+	_SetClause                    // SET
 )
 
-func (k clauseKind) build(buf *bytes.Buffer) {
-	switch k {
-	case fromKind:
-		buf.WriteString("FROM ")
-	case intoKind:
-		buf.WriteString("INTO ")
-	case whereKind:
-		buf.WriteString("WHERE ")
-	case orderKind:
-		buf.WriteString("ORDER BY ")
-	case setKind:
-		buf.WriteString("SET ")
-	case asKind:
-		buf.WriteString("AS ")
-	case limitKind:
-		buf.WriteString("LIMIT ")
-	case offsetKind:
-		buf.WriteString("OFFSET ")
-	case valuesKind:
-		buf.WriteString("VALUES ")
-	case countKind:
-		buf.WriteString("COUNT")
-	case returningKind:
-		buf.WriteString("RETURNING ")
+var (
+	_ Clause = (*fromClause)(nil)
+	_ Clause = (*limitClause)(nil)
+	_ Clause = (*offsetClause)(nil)
+	_ Clause = (*orderClause)(nil)
+	_ Clause = (*unionClause)(nil)
+	_ Clause = (*whereClause)(nil)
+	_ Clause = (*returningClause)(nil)
+	_ Clause = (*setClause)(nil)
+)
+
+func realWhere(conjunction string, left Expr, op string, right Expr) Option {
+	return func(q Query) Query {
+		leftArgs := left.Args()
+		rightArgs := right.Args()
+
+		args := make([]interface{}, 0, len(leftArgs) + len(rightArgs))
+		args = append(args, leftArgs...)
+		args = append(args, rightArgs...)
+
+		if q1, ok := right.(Query); ok {
+			right = Lit("(" + q1.buildInitial() + ")")
+		}
+
+		q.clauses = append(q.clauses, whereClause{
+			conjunction: conjunction,
+			op:          op,
+			left:        left,
+			right:       right,
+		})
+		q.args = append(q.args, args...)
+		return q
 	}
 }
 
-// -- alias implement --
-
-func (a alias) build(buf *bytes.Buffer) {
-	buf.WriteString(a.name)
-}
-
-func (a alias) cat() string {
-	return ","
-}
-
-func (a alias) kind() clauseKind {
-	return asKind
-}
-
-// -- column implement --
-
-func (c column) build(buf *bytes.Buffer) {
-	fmt.Fprintf(buf, "%s %s %v", c.col, c.op, c.val)
-}
-
-func (c column) cat() string {
-	if c.clauseKind == whereKind {
-		return " " + c.conjunction + " "
-	}
-	return c.conjunction + " "
-}
-
-func (c column) kind() clauseKind {
-	return c.clauseKind
-}
-
-// -- count implement --
-
-func (c count) build(buf *bytes.Buffer) {
-	buf.WriteString(c.expr)
-}
-
-func (c count) cat() string {
-	return ""
-}
-
-func (c count) kind() clauseKind {
-	return countKind
-}
-
-// -- list implement --
-
-func (l list) build(buf *bytes.Buffer) {
-	if l.clauseKind == valuesKind {
-		buf.WriteString("(")
-	}
-
-	buf.WriteString(strings.Join(l.items, ", "))
-
-	if l.clauseKind == valuesKind {
-		buf.WriteString(")")
+// From appends a FROM clause for the given table to the Query.
+func From(table string) Option {
+	return func(q Query) Query {
+		q.clauses = append(q.clauses, fromClause{
+			table: table,
+		})
+		return q
 	}
 }
 
-func (l list) cat() string {
-	return ","
+// Limit appends a LIMIT clause with the given amount to the Query.
+func Limit(n int64) Option {
+	return func(q Query) Query {
+		q.clauses = append(q.clauses, limitClause(n))
+		return q
+	}
 }
 
-func (l list) kind() clauseKind {
-	return l.clauseKind
+// Offset appends an OFFSET clause with the given value to the Query.
+func Offset(n int64) Option {
+	return func(q Query) Query {
+		q.clauses = append(q.clauses, offsetClause(n))
+		return q
+	}
 }
 
-// -- order implement --
-
-func (o order) build(buf *bytes.Buffer) {
-	buf.WriteString(o.col)
-	buf.WriteString(" ")
-	buf.WriteString(o.dir)
+// OrderAsc appends an ORDER BY [column,...] ASC clause for the given columns
+// to the Query.
+func OrderAsc(cols ...string) Option {
+	return func(q Query) Query {
+		q.clauses = append(q.clauses, orderClause{
+			cols: cols,
+			dir:  "ASC",
+		})
+		return q
+	}
 }
 
-func (o order) cat() string {
-	return ","
+// OrderDesc appends an ORDER BY [column,...] DESC clause for the given columns
+// to the Query.
+func OrderDesc(cols ...string) Option {
+	return func(q Query) Query {
+		q.clauses = append(q.clauses, orderClause{
+			cols: cols,
+			dir:  "DESC",
+		})
+		return q
+	}
 }
 
-func (o order) kind() clauseKind {
-	return orderKind
+// Returning appends a RETURNING [column,...] clause for the given columns to
+// the Query.
+func Returning(cols ...string) returningClause {
+	return returningClause{
+		cols: cols,
+	}
 }
 
-// -- portion implement --
-
-func (p portion) build(buf *bytes.Buffer) {
-	buf.WriteString(strconv.FormatInt(p.n, 10))
+// Set appends a SET clause for the given column and expression to the Query.
+func Set(col string, expr Expr) Option {
+	return func(q Query) Query {
+		if q.stmt == _Update {
+			q.clauses = append(q.clauses, setClause{
+				col:  col,
+				expr: Lit(expr.Build()),
+			})
+			q.args = append(q.args, expr.Args()...)
+		}
+		return q
+	}
 }
 
-func (p portion) cat() string {
-	return ""
+// Values appends a VALUES clause for the given values to the Query. Each
+// given value will use the ? placeholder when built.
+func Values(vals ...interface{}) valuesClause {
+	items := make([]string, 0, len(vals))
+
+	for range vals {
+		items = append(items, "?")
+	}
+	return valuesClause{
+		items: items,
+		args:  vals,
+	}
 }
 
-func (p portion) kind() clauseKind {
-	return p.clauseKind
+// Where appends a WHERE clause to the Query. This will append the arguments
+// of the given expression to the Query too. By default this will use AND for
+// conjoining multiple WHERE clauses.
+func Where(col, op string, expr Expr) Option {
+	return func(q Query) Query {
+		return realWhere("AND", Ident(col), op, expr)(q)
+	}
 }
 
-// -- table implement --
-
-func (t table) build(buf *bytes.Buffer) {
-	buf.WriteString(t.item)
+// OrWhere appends a WHERE clause to the Query. This will append the arguments
+// of the given expression to the Query too. This will use OR for conjoining
+// with a preceding WHERE clause.
+func OrWhere(col, op string, expr Expr) Option {
+	return func(q Query) Query {
+		return realWhere("OR", Ident(col), op, expr)(q)
+	}
 }
 
-func (t table) cat() string {
-	return ","
+func (c fromClause) Args() []interface{} { return nil }
+func (c fromClause) Build() string       { return c.table }
+func (c fromClause) Kind() clauseKind    { return _FromClause }
+
+func (c limitClause) Args() []interface{} { return nil }
+func (c limitClause) Build() string       { return strconv.FormatInt(int64(c), 10) }
+func (c limitClause) Kind() clauseKind    { return _LimitClause }
+
+func (c offsetClause) Args() []interface{} { return nil }
+func (c offsetClause) Build() string       { return strconv.FormatInt(int64(c), 10) }
+func (c offsetClause) Kind() clauseKind    { return _OffsetClause }
+
+func (c orderClause) Args() []interface{} { return nil }
+func (c orderClause) Build() string       { return strings.Join(c.cols, ", ") + " " + c.dir }
+func (c orderClause) Kind() clauseKind    { return _OrderClause }
+
+func (c returningClause) Args() []interface{} { return nil }
+func (c returningClause) Build() string       { return strings.Join(c.cols, ", ") }
+func (c returningClause) Kind() clauseKind    { return _ReturningClause }
+
+func (c setClause) Args() []interface{} { return nil }
+func (c setClause) Build() string       { return c.col + " = " + c.expr.Build() }
+func (c setClause) Kind() clauseKind    { return _SetClause }
+
+func (c unionClause) Args() []interface{}  { return nil }
+func (c unionClause) Kind() clauseKind     { return _UnionClause }
+func (c unionClause) Build() string        { return c.q.buildInitial() }
+
+func (c valuesClause) Args() []interface{} { return c.args  }
+func (c valuesClause) Build() string       { return "(" + strings.Join(c.items, ", ") + ")" }
+func (c valuesClause) Kind() clauseKind    { return _ValuesClause }
+
+func (c whereClause) Args() []interface{} { return nil }
+
+func (c whereClause) Build() string {
+	return c.left.Build() + " " + c.op + " " + c.right.Build()
 }
 
-func (t table) kind() clauseKind {
-	return t.clauseKind
-}
-
-// -- union implement --
-
-func (u union) build(buf *bytes.Buffer) {
-	buf.WriteString(u.query.buildInitial())
-}
-
-func (u union) cat() string {
-	return " UNION "
-}
-
-func (u union) kind() clauseKind {
-	return unionKind
-}
+func (c whereClause) Kind() clauseKind { return _WhereClause }
