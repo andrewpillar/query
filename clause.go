@@ -159,9 +159,12 @@ func OrderDesc(cols ...string) Option {
 
 // Returning appends a RETURNING [column,...] clause for the given columns to
 // the Query.
-func Returning(cols ...string) returningClause {
-	return returningClause{
-		cols: cols,
+func Returning(cols ...string) Option {
+	return func(q Query) Query {
+		q.clauses = append(q.clauses, returningClause{
+			cols: cols,
+		})
+		return q
 	}
 }
 
@@ -181,15 +184,20 @@ func Set(col string, expr Expr) Option {
 
 // Values appends a VALUES clause for the given values to the Query. Each
 // given value will use the ? placeholder when built.
-func Values(vals ...interface{}) valuesClause {
+func Values(vals ...interface{}) Option {
 	items := make([]string, 0, len(vals))
 
 	for range vals {
 		items = append(items, "?")
 	}
-	return valuesClause{
-		items: items,
-		args:  vals,
+
+	return func(q Query) Query {
+		q.clauses = append(q.clauses, valuesClause{
+			items: items,
+			args:  vals,
+		})
+		q.args = append(q.args, vals...)
+		return q
 	}
 }
 

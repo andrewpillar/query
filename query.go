@@ -48,13 +48,17 @@ func Delete(table string, opts ...Option) Query {
 
 // Insert builds up an INSERT query on the given table using the given leading
 // expression, and applying the given options.
-func Insert(table string, expr Expr, clauses ...Clause) Query {
-	return Query{
-		stmt:    _Insert,
-		table:   table,
-		exprs:   []Expr{expr},
-		clauses: clauses,
+func Insert(table string, expr Expr, opts ...Option) Query {
+	q := Query{
+		stmt:  _Insert,
+		table: table,
+		exprs: []Expr{expr},
 	}
+
+	for _, opt := range opts {
+		q = opt(q)
+	}
+	return q
 }
 
 // Select will build up a SELECT query using the given leading expression, and
