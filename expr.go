@@ -55,6 +55,14 @@ func Columns(cols ...string) listExpr {
 	}
 }
 
+// Sum returns a call expression for the SUM function on the given column.
+func Sum(col string) callExpr {
+	return callExpr{
+		name: "SUM",
+		args: []Expr{Lit(col)},
+	}
+}
+
 // Count returns a call expression for the COUNT function on the given columns.
 func Count(cols ...string) callExpr {
 	exprs := make([]Expr, 0, len(cols))

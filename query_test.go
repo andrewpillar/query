@@ -8,6 +8,10 @@ func Test_Query(t *testing.T) {
 		q        Query
 	}{
 		{
+			"SELECT SUM(size) FROM objects WHERE (user_id = $1)",
+			Select(Sum("size"), From("objects"), Where("user_id", "=", Arg(1))),
+		},
+		{
 			"SELECT COUNT(*) FROM users",
 			Select(Count("*"), From("users")),
 		},
