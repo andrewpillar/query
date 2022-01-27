@@ -192,6 +192,16 @@ func Test_Query(t *testing.T) {
 				OrWhere("root_id", "IN", List(1)),
 			),
 		},
+		{
+			"INSERT INTO notes (title, comment) VALUES ($1, $2), ($3, $4), ($5, $6)",
+			Insert(
+				"notes",
+				Columns("title", "comment"),
+				Values("note 1", "some comment"),
+				Values("note 2", "some other comment"),
+				Values("note 3", "another comment"),
+			),
+		},
 	}
 
 	for i, test := range tests {

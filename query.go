@@ -125,7 +125,7 @@ func (q Query) conj(cl Clause) string {
 		return " " + v.conjunction + " "
 	case unionClause:
 		return " " + cl.Kind().String() + " "
-	case setClause:
+	case setClause, valuesClause:
 		return ", "
 	default:
 		return " "
