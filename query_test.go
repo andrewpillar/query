@@ -202,6 +202,15 @@ func Test_Query(t *testing.T) {
 				Values("note 3", "another comment"),
 			),
 		},
+		{
+			"SELECT * FROM posts ORDER BY created_at DESC, author ASC",
+			Select(
+				Columns("*"),
+				From("posts"),
+				OrderDesc("created_at"),
+				OrderAsc("author"),
+			),
+		},
 	}
 
 	for i, test := range tests {

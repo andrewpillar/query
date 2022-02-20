@@ -5,59 +5,17 @@ import (
 	"strings"
 )
 
-type clauseKind uint
-
-type fromClause struct {
-	table string
-}
-
-type intoClause struct {
-	table string
-}
-
-type limitClause int64
-
-type offsetClause int64
-
-type orderClause struct {
-	cols []string
-	dir  string
-}
-
-type returningClause struct {
-	cols []string
-}
-
-type setClause struct {
-	col  string
-	expr Expr
-}
-
-type unionClause struct {
-	q Query
-}
-
-type valuesClause struct {
-	items []string
-	args  []interface{}
-}
-
-type whereClause struct {
-	conjunction string
-	op          string
-	left        Expr
-	right       Expr
-}
-
-// Clause is a Query expression that will typically represent one of the
+// clause is a Query expression that will typically represent one of the
 // following SQL clauses, FROM, LIMIT, OFFSET, ORDER BY, UNION, VALUES,
 // WHERE, RETURNING, and SET.
-type Clause interface {
+type clause interface {
 	Expr
 
-	// Kind returns the kind of the current Clause.
-	Kind() clauseKind
+	// kind returns the kind of the current clause.
+	kind() clauseKind
 }
+
+type clauseKind uint
 
 //go:generate stringer -type clauseKind -linecomment
 const (
@@ -70,17 +28,6 @@ const (
 	_WhereClause                  // WHERE
 	_ReturningClause              // RETURNING
 	_SetClause                    // SET
-)
-
-var (
-	_ Clause = (*fromClause)(nil)
-	_ Clause = (*limitClause)(nil)
-	_ Clause = (*offsetClause)(nil)
-	_ Clause = (*orderClause)(nil)
-	_ Clause = (*unionClause)(nil)
-	_ Clause = (*whereClause)(nil)
-	_ Clause = (*returningClause)(nil)
-	_ Clause = (*setClause)(nil)
 )
 
 func realWhere(conjunction string, left Expr, op string, right Expr) Option {
@@ -104,6 +51,24 @@ func realWhere(conjunction string, left Expr, op string, right Expr) Option {
 		})
 		q.args = append(q.args, args...)
 		return q
+	}
+}
+
+// Where appends a WHERE clause to the Query. This will append the arguments
+// of the given expression to the Query too. By default this will use AND for
+// conjoining multiple WHERE clauses.
+func Where(col, op string, expr Expr) Option {
+	return func(q Query) Query {
+		return realWhere("AND", Ident(col), op, expr)(q)
+	}
+}
+
+// OrWhere appends a WHERE clause to the Query. This will append the arguments
+// of the given expression to the Query too. This will use OR for conjoining
+// with a preceding WHERE clause.
+func OrWhere(col, op string, expr Expr) Option {
+	return func(q Query) Query {
+		return realWhere("OR", Ident(col), op, expr)(q)
 	}
 }
 
@@ -201,55 +166,93 @@ func Values(vals ...interface{}) Option {
 	}
 }
 
-// Where appends a WHERE clause to the Query. This will append the arguments
-// of the given expression to the Query too. By default this will use AND for
-// conjoining multiple WHERE clauses.
-func Where(col, op string, expr Expr) Option {
-	return func(q Query) Query {
-		return realWhere("AND", Ident(col), op, expr)(q)
-	}
+type fromClause struct {
+	table string
 }
 
-// OrWhere appends a WHERE clause to the Query. This will append the arguments
-// of the given expression to the Query too. This will use OR for conjoining
-// with a preceding WHERE clause.
-func OrWhere(col, op string, expr Expr) Option {
-	return func(q Query) Query {
-		return realWhere("OR", Ident(col), op, expr)(q)
-	}
-}
+var _ clause = (*fromClause)(nil)
 
 func (c fromClause) Args() []interface{} { return nil }
 func (c fromClause) Build() string       { return c.table }
-func (c fromClause) Kind() clauseKind    { return _FromClause }
+func (c fromClause) kind() clauseKind    { return _FromClause }
+
+type limitClause int64
+
+var _ clause = (*limitClause)(nil)
 
 func (c limitClause) Args() []interface{} { return nil }
 func (c limitClause) Build() string       { return strconv.FormatInt(int64(c), 10) }
-func (c limitClause) Kind() clauseKind    { return _LimitClause }
+func (c limitClause) kind() clauseKind    { return _LimitClause }
+
+type offsetClause int64
+
+var _ clause = (*offsetClause)(nil)
 
 func (c offsetClause) Args() []interface{} { return nil }
 func (c offsetClause) Build() string       { return strconv.FormatInt(int64(c), 10) }
-func (c offsetClause) Kind() clauseKind    { return _OffsetClause }
+func (c offsetClause) kind() clauseKind    { return _OffsetClause }
+
+type orderClause struct {
+	cols []string
+	dir  string
+}
+
+var _ clause = (*orderClause)(nil)
 
 func (c orderClause) Args() []interface{} { return nil }
 func (c orderClause) Build() string       { return strings.Join(c.cols, ", ") + " " + c.dir }
-func (c orderClause) Kind() clauseKind    { return _OrderClause }
+func (c orderClause) kind() clauseKind    { return _OrderClause }
+
+type returningClause struct {
+	cols []string
+}
+
+var _ clause = (*returningClause)(nil)
 
 func (c returningClause) Args() []interface{} { return nil }
 func (c returningClause) Build() string       { return strings.Join(c.cols, ", ") }
-func (c returningClause) Kind() clauseKind    { return _ReturningClause }
+func (c returningClause) kind() clauseKind    { return _ReturningClause }
+
+type setClause struct {
+	col  string
+	expr Expr
+}
+
+var _ clause = (*setClause)(nil)
 
 func (c setClause) Args() []interface{} { return nil }
 func (c setClause) Build() string       { return c.col + " = " + c.expr.Build() }
-func (c setClause) Kind() clauseKind    { return _SetClause }
+func (c setClause) kind() clauseKind    { return _SetClause }
+
+type unionClause struct {
+	q Query
+}
+
+var _ clause = (*unionClause)(nil)
 
 func (c unionClause) Args() []interface{}  { return nil }
-func (c unionClause) Kind() clauseKind     { return _UnionClause }
 func (c unionClause) Build() string        { return c.q.buildInitial() }
+func (c unionClause) kind() clauseKind     { return _UnionClause }
+
+type valuesClause struct {
+	items []string
+	args  []interface{}
+}
+
+var _ clause = (*valuesClause)(nil)
 
 func (c valuesClause) Args() []interface{} { return c.args  }
 func (c valuesClause) Build() string       { return "(" + strings.Join(c.items, ", ") + ")" }
-func (c valuesClause) Kind() clauseKind    { return _ValuesClause }
+func (c valuesClause) kind() clauseKind    { return _ValuesClause }
+
+type whereClause struct {
+	conjunction string
+	op          string
+	left        Expr
+	right       Expr
+}
+
+var _ clause = (*whereClause)(nil)
 
 func (c whereClause) Args() []interface{} { return nil }
 
@@ -257,4 +260,4 @@ func (c whereClause) Build() string {
 	return c.left.Build() + " " + c.op + " " + c.right.Build()
 }
 
-func (c whereClause) Kind() clauseKind { return _WhereClause }
+func (c whereClause) kind() clauseKind { return _WhereClause }

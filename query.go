@@ -19,7 +19,7 @@ type Query struct {
 	stmt    statement
 	table   string
 	exprs   []Expr
-	clauses []Clause
+	clauses []clause
 	args    []interface{}
 }
 
@@ -115,7 +115,7 @@ func Options(opts ...Option) Option {
 
 // conj returns the string that should be used for conjoining multiple clauses
 // of the same type.
-func (q Query) conj(cl Clause) string {
+func (q Query) conj(cl clause) string {
 	if cl == nil {
 		return ""
 	}
@@ -124,8 +124,10 @@ func (q Query) conj(cl Clause) string {
 	case whereClause:
 		return " " + v.conjunction + " "
 	case unionClause:
-		return " " + cl.Kind().String() + " "
+		return " " + cl.kind().String() + " "
 	case setClause, valuesClause:
+		return ", "
+	case orderClause:
 		return ", "
 	default:
 		return " "
@@ -169,8 +171,8 @@ func (q Query) buildInitial() string {
 
 	for i, cl := range q.clauses {
 		var (
-			prev Clause
-			next Clause
+			prev clause
+			next clause
 		)
 
 		if i > 0 {
@@ -181,7 +183,7 @@ func (q Query) buildInitial() string {
 			next = q.clauses[i+1]
 		}
 
-		kind := cl.Kind()
+		kind := cl.kind()
 
 		if kind != _UnionClause {
 			// Write the string of the clause kind only once, this avoids something
@@ -202,17 +204,16 @@ func (q Query) buildInitial() string {
 		if next != nil {
 			conj := q.conj(next)
 
-			// Determine if the clause needs wrapping in parentheses. We wrap
-			// clauses under these conditions:
-			//
-			// - If the next clause is a different kind from the current one
-			if next.Kind() == kind {
+			// Clauses are wrapped if the next clause is different from the
+			// current one, or if the conjoining string is different for the
+			// next clause.
+			if next.kind() == kind {
 				wrap := false
 
 				if prev != nil {
 					// Wrap the clause in parentheses if we have a different
 					// conjunction string.
-					wrap = (prev.Kind() == kind) && (conj != q.conj(cl))
+					wrap = (prev.kind() == kind) && (conj != q.conj(cl))
 				}
 
 				if wrap {
