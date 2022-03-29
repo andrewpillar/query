@@ -211,6 +211,23 @@ func Test_Query(t *testing.T) {
 				OrderAsc("author"),
 			),
 		},
+		{
+			"SELECT DISTINCT name FROM build_tags WHERE (build_id = $1)",
+			SelectDistinct(
+				Columns("name"),
+				From("build_tags"),
+				Where("build_id", "=", Arg(1)),
+			),
+		},
+		{
+			"SELECT DISTINCT ON (namespace_id) id, namespace_id FROM builds ORDER BY namespace_id, created_at DESC",
+			SelectDistinctOn(
+				[]string{"namespace_id"},
+				Columns("id", "namespace_id"),
+				From("builds"),
+				OrderDesc("namespace_id", "created_at"),
+			),
+		},
 	}
 
 	for i, test := range tests {

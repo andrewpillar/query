@@ -13,11 +13,13 @@ func _() {
 	_ = x[_Insert-2]
 	_ = x[_Select-3]
 	_ = x[_Update-4]
+	_ = x[_SelectDistinct-5]
+	_ = x[_SelectDistinctOn-6]
 }
 
-const _statement_name = "DELETEINSERTSELECTUPDATE"
+const _statement_name = "DELETEINSERTSELECTUPDATESELECT DISTINCTSELECT DISTINCT ON"
 
-var _statement_index = [...]uint8{0, 0, 6, 12, 18, 24}
+var _statement_index = [...]uint8{0, 0, 6, 12, 18, 24, 39, 57}
 
 func (i statement) String() string {
 	if i >= statement(len(_statement_index)-1) {

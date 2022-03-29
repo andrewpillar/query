@@ -30,6 +30,8 @@ const (
 	_Insert                // INSERT
 	_Select                // SELECT
 	_Update                // UPDATE
+	_SelectDistinct        // SELECT DISTINCT
+	_SelectDistinctOn      // SELECT DISTINCT ON
 )
 
 // Delete builds up a DELETE query on the given table applying the given
@@ -67,6 +69,36 @@ func Select(expr Expr, opts ...Option) Query {
 	q := Query{
 		stmt:  _Select,
 		exprs: []Expr{expr},
+	}
+
+	for _, opt := range opts {
+		q = opt(q)
+	}
+	return q
+}
+
+func SelectDistinct(expr Expr, opts ...Option) Query {
+	q := Query{
+		stmt:  _SelectDistinct,
+		exprs: []Expr{expr},
+	}
+
+	for _, opt := range opts {
+		q = opt(q)
+	}
+	return q
+}
+
+func SelectDistinctOn(cols []string, expr Expr, opts ...Option) Query {
+	q := Query{
+		stmt:  _SelectDistinctOn,
+		exprs: []Expr{
+			listExpr{
+				items: cols,
+				wrap:  true,
+			},
+			expr,
+		},
 	}
 
 	for _, opt := range opts {
@@ -151,7 +183,7 @@ func (q Query) buildInitial() string {
 		buf.WriteString(" FROM " + q.table + " ")
 	}
 
-	for _, expr := range q.exprs {
+	for i, expr := range q.exprs {
 		buf.WriteByte(' ')
 
 		if q.stmt == _Insert {
@@ -162,6 +194,10 @@ func (q Query) buildInitial() string {
 
 		if q.stmt == _Insert {
 			buf.WriteByte(')')
+		}
+
+		if q.stmt == _SelectDistinctOn && i == 0 {
+			continue
 		}
 		buf.WriteByte(' ')
 	}
